@@ -1,7 +1,7 @@
 import sys, pygame
 from time import time
 from math import pi, sin ,cos
-from cartpole import Cart, Pole
+from cartpole import Cart, Pole, DCMotor
 pygame.init()
 
 size = width, height = 1200, 600
@@ -13,10 +13,12 @@ runtime = 10
 N = int(runtime / dt)
 g = 9.81
 
-cart = Cart(0.1, 0.05, 0, -0.8, 0.8, (255,0,0), 
-    Pole(0.1, 10/180*pi, 0.2, 0.01, (0,255,0), 
-        Pole(0.1, 5/180*pi, 0.2, 0.01, (0,0,255), 
-            Pole(0.1, 15/180*pi, 0.2, 0.01, (255,0,255), None)
+system = DCMotor(12, -12, 0.05, 0, 0.5, 0.5, 0.05, 0.01, 
+    Cart(0.1, 0.05, 0, -0.8, 0.8, (255,0,0), 
+        Pole(0.1, 10/180*pi, 0.2, 0.01, (0,255,0), 
+            Pole(0.1, 5/180*pi, 0.2, 0.01, (0,0,255), 
+                Pole(0.1, 15/180*pi, 0.2, 0.01, (255,0,255), None)
+            )
         )
     )
 )
@@ -38,24 +40,24 @@ while True:
         if event.type == pygame.QUIT: sys.exit()
 
     for i in range(1,N):
-        cart.update(dt, 0, g)
+        system.update(dt, 5, g)
 
-        x0 = si_to_pixels(cart.x()) + width//2
+        x0 = si_to_pixels(system.cart.x()) + width//2
         y0 = height//2
 
         screen.fill((255,255,255))
-        x0 = si_to_pixels(cart.x()) + width//2
+        x0 = si_to_pixels(system.cart.x()) + width//2
         y0 = height//2
-        pygame.draw.rect(screen, cart.color, (x0, y0, 20, 10))
+        pygame.draw.rect(screen, system.cart.color, (x0, y0, 20, 10))
 
-        max_x = width//2 + si_to_pixels(cart.max_x)
-        min_x = width//2 + si_to_pixels(cart.min_x)
+        max_x = width//2 + si_to_pixels(system.cart.max_x)
+        min_x = width//2 + si_to_pixels(system.cart.min_x)
 
-        pygame.draw.rect(screen, cart.color, (min_x-10, y0, 10, 10))
-        pygame.draw.rect(screen, cart.color, (max_x+20, y0, 10, 10))
+        pygame.draw.rect(screen, system.cart.color, (min_x-10, y0, 10, 10))
+        pygame.draw.rect(screen, system.cart.color, (max_x+20, y0, 10, 10))
 
         x0 += 10
-        for pole in iter(cart):
+        for pole in iter(system.cart):
             x1 = x0 + si_to_pixels(pole.l * sin(pole.angle()))
             y1 = y0 + si_to_pixels(-pole.l * cos(pole.angle()))
             pygame.draw.line(screen, pole.color, (x0, y0), (x1, y1), 10)

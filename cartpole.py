@@ -1,6 +1,43 @@
 from __future__ import annotations
 from math import sin, cos
 
+class DCMotor:
+    def __init__(self, max_V: float, min_V: float, resistance: float, inductance: float, ke: float, kt: float, inertia: float, friction: float, cart: Cart):
+        self.max_V = max_V
+        self.min_V = min_V
+
+        self.Ra = resistance
+        self.La = inductance
+        self.Ke = ke
+        self.Kt = kt
+        self.Jm = inertia
+        self.Bm = friction
+
+        self.cart = cart
+
+        self.state = {
+            "Wm": [0.0],
+            "Ia": [0.0]
+        }
+
+    def angular_velocity(self, t=None):
+        if not t:
+            t = len(self.state["Wm"])-1
+        return self.state["Wm"][t]
+
+    def update(self, dt: float, Va: float, g: float):
+        Wm = self.angular_velocity()
+        
+        Ia = (Va-self.Kt*Wm)/self.Ra
+        Tm = self.Kt*Ia
+        d_Wm = (Tm-self.Bm*Wm-0)/self.Jm
+        Wm = Wm + d_Wm * dt
+
+        self.state["Wm"].append(Wm)
+        self.state["Ia"].append(Ia)
+
+        self.cart.update(dt, Tm, g)
+
 class Cart:
     def __init__(self, mass: float, cart_friction: float, x0: float, min_x: float, max_x: float, color: tuple[int,int,int], pole: Pole):
         self.m = mass
@@ -15,14 +52,14 @@ class Cart:
             "dd_x": [0]
         }
 
-        self.child = pole
+        self.pole = pole
 
     def __iter__(self):
-        return iter(self.child)
+        return iter(self.pole)
 
     def total_mass(self):
         M = self.m
-        for pole in iter(self.child):
+        for pole in iter(self.pole):
             M += pole.m
         return M
 
