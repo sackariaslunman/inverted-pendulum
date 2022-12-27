@@ -1,8 +1,8 @@
 from __future__ import annotations
-from math import sin, cos
+from math import sin, cos, pi
 
 class DCMotor:
-    def __init__(self, max_V: float, min_V: float, resistance: float, inductance: float, ke: float, kt: float, inertia: float, friction: float, cart: Cart):
+    def __init__(self, max_V: float, min_V: float, resistance: float, inductance: float, ke: float, kt: float, inertia: float, friction: float, color: tuple[int,int,int], cart: Cart):
         self.max_V = max_V
         self.min_V = min_V
 
@@ -14,11 +14,18 @@ class DCMotor:
         self.Bm = friction
 
         self.cart = cart
+        self.color = color
 
         self.state = {
+            "theta": [0.0],
             "Wm": [0.0],
             "Ia": [0.0]
         }
+
+    def angle(self, t=None):
+        if not t:
+            t = len(self.state["theta"])-1
+        return self.state["theta"][t]
 
     def angular_velocity(self, t=None):
         if not t:
@@ -32,7 +39,9 @@ class DCMotor:
         Tm = self.Kt*Ia
         d_Wm = (Tm-self.Bm*Wm-0)/self.Jm
         Wm = Wm + d_Wm * dt
+        theta = self.angle() + Wm * dt
 
+        self.state["theta"].append(theta)
         self.state["Wm"].append(Wm)
         self.state["Ia"].append(Ia)
 
