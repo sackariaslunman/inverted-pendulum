@@ -84,9 +84,9 @@ class Cart:
 
     def clamp(self, x: float):
         if x > self.max_x:
-            x = self.max_x
+            return self.max_x
         elif x < self.min_x:
-            x = self.min_x
+            return self.min_x
         return x
 
     def update(self, dt: float, u: float, g: float):

@@ -15,7 +15,9 @@ system = DCMotor(12, -12, 0.05, 0, 0.5, 0.5, 0.05, 0.01, (0,0,0),
     Cart(0.1, 0.05, 0, -0.8, 0.8, (255,0,0), 
         Pole(0.1, 10/180*pi, 0.2, 0.01, (0,255,0), 
             Pole(0.1, 5/180*pi, 0.2, 0.01, (0,0,255), 
-                Pole(0.1, 15/180*pi, 0.2, 0.01, (255,0,255), None)
+                Pole(0.1, 15/180*pi, 0.2, 0.01, (255,0,255), 
+                    Pole(0.05, -45/180*pi, 0.2, 0.01, (255,255,0), None)
+                )
             )
         )
     )
@@ -38,7 +40,7 @@ while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
 
-    system.update(dt, 5*sin(0.001*i) + 2*cos(0.005*i), g)
+    system.update(dt, 0, g)
 
     screen.fill((255,255,255))
 
