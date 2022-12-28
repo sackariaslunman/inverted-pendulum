@@ -1,5 +1,5 @@
 import sys, pygame
-from time import time
+from time import perf_counter
 from math import pi, sin ,cos
 from cartpole import Cart, Pole, DCMotor
 pygame.init()
@@ -37,13 +37,13 @@ def si_to_pixels(x: float):
     return int(x * 500)
 
 last_update = 0
-start_time = time()
+start_time = perf_counter()
 i = 0
 
 font = pygame.font.Font('freesansbold.ttf', 20)
 
 while True:
-    current_time = time()-start_time
+    current_time = perf_counter()-start_time
     if current_time > dt + last_update:
         last_update = current_time
     else:
@@ -55,7 +55,7 @@ while True:
 
     screen.fill(colors.gray)
 
-    cart.update(dt, 30*cos(dt*i*10), g)
+    cart.update(dt, 12*cos(i*dt*2), g)
 
     x0 = si_to_pixels(cart.x()) + width//2
     y0 = height//2
@@ -87,13 +87,13 @@ while True:
     
     texts = [
         f"Time: {round(i*dt,2)} s",
-        "",
-        "Cart:",
+        f"",
+        f"Cart:",
         f"Position: {round(cart.x(),2)} m",
         f"Velocity: {round(cart.velocity(),2)} m/s",
         f"Acceleration: {round(cart.acceleration(),2)} m/s^2",
-        "",
-        "Motor:",
+        f"",
+        f"Motor:",
         f"Angle: {round(cart.motor.angle(),2)} rad",
         f"Angular velocity: {round(cart.motor.angular_velocity(),2)} rad/s",
     ]
