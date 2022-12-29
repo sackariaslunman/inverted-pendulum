@@ -1,15 +1,19 @@
 from __future__ import annotations
-from math import sin, cos, pi
+from math import sin, cos
 
 class DCMotor:
-    def __init__(self, max_V: float, min_V: float, resistance: float, inductance: float, ke: float, kt: float, inertia: float, friction: float, radius: float, color: tuple[int,int,int]):
-        self.max_V = max_V
-        self.min_V = min_V
-
+    def __init__(
+        self, 
+        resistance: float, 
+        K: float, 
+        inertia: float, 
+        friction: float, 
+        radius: float, 
+        color: tuple[int,int,int]
+    ):
+    
         self.Ra = resistance
-        self.La = inductance
-        self.Ke = ke
-        self.Kt = kt
+        self.K = K
         self.Jm = inertia
         self.Bm = friction
 
@@ -39,7 +43,17 @@ class DCMotor:
         self.state["omega"].append(omega)
 
 class Cart:
-    def __init__(self, mass: float, cart_friction: float, x0: float, min_x: float, max_x: float, color: tuple[int,int,int], motor: DCMotor, pole: Pole):
+    def __init__(
+        self, 
+        mass: float, 
+        cart_friction: float, 
+        x0: float, min_x: float, 
+        max_x: float, 
+        color: tuple[int,int,int], 
+        motor: DCMotor, 
+        pole: Pole
+        ):
+
         self.m = mass
         self.u_c = cart_friction
         self.min_x = min_x
@@ -80,24 +94,18 @@ class Cart:
             t = len(self.state["dd_x"])-1
         return self.state["dd_x"][t]
 
-    def clamp(self, x: float):
-        if x > self.max_x:
-            return self.max_x
-        elif x < self.min_x:
-            return self.min_x
-        return x
-
     def update(self, dt: float, Va: float, g: float):
         x = self.x()
         d_x = self.velocity()
         M = self.total_mass()
 
-        sum1 = sum([pole.m*sin(pole.angle())*cos(pole.angle()) for pole in self])
+        sum1 = sum([pole.m*sin(pole.angle())*cos(pole.angle()) 
+            for pole in self])
         sum2 = sum([pole.m*pole.lh()*pole.angular_velocity()**2*sin(pole.angle()) for pole in self])
         sum3 = sum([pole.u_p*pole.angular_velocity()*cos(pole.angle())/pole.lh() for pole in self])
         sum4 = sum([pole.m*cos(pole.angle())**2 for pole in self])
 
-        dd_x = (g*sum1-7/3*((1/self.motor.r**2)*(self.motor.Kt/self.motor.Ra*(Va*self.motor.r-self.motor.Ke*d_x)-self.motor.Bm*d_x)+sum2-self.u_c*d_x)-sum3)/(sum4-7/3*(M+self.motor.Jm/self.motor.r**2))
+        dd_x = (g*sum1-7/3*((1/self.motor.r**2)*(self.motor.K/self.motor.Ra*(Va*self.motor.r-self.motor.K*d_x)-self.motor.Bm*d_x)+sum2-self.u_c*d_x)-sum3)/(sum4-7/3*(M+self.motor.Jm/self.motor.r**2))
         d_x = d_x + dd_x * dt
         x = self.clamp(x + d_x * dt)
 
@@ -109,8 +117,24 @@ class Cart:
             pole.update(dt, dd_x, g)
         self.motor.update(dt, d_x)
 
+    def clamp(self, x: float):
+        if x > self.max_x:
+            return self.max_x
+        elif x < self.min_x:
+            return self.min_x
+        return x
+
 class Pole:
-    def __init__(self, mass: float, angle0: float, length: float, pole_friction: float, color: tuple[int,int,int], child: Pole | None):
+    def __init__(
+        self, 
+        mass: float, 
+        angle0: float, 
+        length: float, 
+        pole_friction: float, 
+        color: tuple[int,int,int], 
+        child: Pole | None
+        ):
+
         self.m = mass
         self.l = length
         self.u_p = pole_friction

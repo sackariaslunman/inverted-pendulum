@@ -24,10 +24,10 @@ dt = 0.001
 g = 9.81
 
 cart = Cart(0.5, 0.05, 0, -0.8, 0.8, colors.red,
-    DCMotor(12, -12, 0.05, 0, 0.5, 0.5, 0.05, 0.01, 0.05, colors.black),
-    Pole(0.2, -10/180*pi, 0.2, 0.005, colors.green, 
-        Pole(0.2, -5/180*pi, 0.15, 0.005, colors.blue, 
-            Pole(0.2, -15/180*pi, 0.15, 0.005, colors.purple, None
+    DCMotor(0.05, 0.5, 0.05, 0.01, 0.05, colors.black),
+    Pole(0.2, 10/180*pi, 0.2, 0.005, colors.green, 
+        Pole(0.2, 5/180*pi, 0.15, 0.005, colors.blue, 
+            Pole(0.2, 15/180*pi, 0.10, 0.005, colors.purple, None
             )
         )
     )
