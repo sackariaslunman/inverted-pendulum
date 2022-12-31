@@ -9,9 +9,6 @@ from time import perf_counter
 from colors import Colors
 
 class CartPolesEnv(gym.Env):
-  """Custom Environment that follows gym interface"""
-  metadata = {'render.modes': ['human']}
-
   def __init__(
     self, 
     cart: Cart, 
@@ -21,6 +18,7 @@ class CartPolesEnv(gym.Env):
 
     super(CartPolesEnv, self).__init__()
     self.cart = cart
+    self.max_height = cart.max_height()
     self.dt = dt
     self.g = g
 
@@ -54,26 +52,22 @@ class CartPolesEnv(gym.Env):
       state.extend([pole.angle(), pole.angular_velocity()])
     return np.array(state, dtype=np.float32)
 
-  def is_terminated(self):
-    state = self.get_state()
-    x = state[0]
-    y = self.cart.height()
-    max_height = self.cart.max_height()
-    return bool(
-      x >= self.cart.max_x or
-      x <= self.cart.min_x or 
-      y < max_height*0.5
-    )
 
   def step(self, action: float):
     reward = 0
     Va = action
     self.cart.update(self.dt, Va, self.g)
+    state = self.get_state()
+    x = state[0]
+    y = self.cart.height()
 
-    terminated = self.is_terminated()
+    terminated = bool(
+      x >= self.cart.max_x or
+      x <= self.cart.min_x
+    )
 
-    if not terminated:
-      reward = 1.0
+    if y > self.max_height * 0.8 and abs(x-0) < 0.1:
+      reward += 1.0
     
     return np.array([self.get_state(), reward, terminated, {}, False])
 
@@ -88,8 +82,6 @@ class CartPolesEnv(gym.Env):
     return int(x * 500)
 
   def render(self):
-    # Render the environment to the screen
-
     if not self.screen:
       pygame.init()
 
