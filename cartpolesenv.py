@@ -22,7 +22,9 @@ class CartPolesEnv(gym.Env):
     self.dt = dt
     self.g = g
 
-    self.screen: pygame.surface.Surface | None
+    self.counter_steps_not_up = 0
+
+    self.screen: pygame.surface.Surface | None = None
     self.font: pygame.font.Font
     self.i : int
     self.width = 1200
@@ -36,9 +38,8 @@ class CartPolesEnv(gym.Env):
     )
 
     num_of_poles = cart.num_of_poles()
-    obs_lower_bound = np.array([cart.min_x, np.finfo(np.float32).min]) + np.tile(np.array([0.0, np.finfo(np.float32).min]), num_of_poles)
-    obs_upper_bound = np.array([cart.max_x, np.finfo(np.float32).max]) + np.tile(np.array([2*pi, np.finfo(np.float32).max]), num_of_poles)
-
+    obs_lower_bound = np.hstack([np.array([cart.min_x, np.finfo(np.float32).min]), np.tile(np.array([0.0, np.finfo(np.float32).min]), num_of_poles)])
+    obs_upper_bound = np.hstack([np.array([cart.max_x, np.finfo(np.float32).max]), np.tile(np.array([2*pi, np.finfo(np.float32).max]), num_of_poles)])
     self.observation_space = spaces.Box(
       low=obs_lower_bound,
       high=obs_upper_bound, 
@@ -63,13 +64,19 @@ class CartPolesEnv(gym.Env):
 
     terminated = bool(
       x >= self.cart.max_x or
-      x <= self.cart.min_x
+      x <= self.cart.min_x or 
+      self.counter_steps_not_up > int(10/self.dt)
     )
 
     if y > self.max_height * 0.8 and abs(x-0) < 0.1:
       reward += 1.0
+      self.counter_steps_not_up = 0
     
-    return np.array([self.get_state(), reward, terminated, {}, False])
+    elif y < -self.max_height * 0.5:
+      reward -= 1.0
+      self.counter_steps_not_up += 1
+        
+    return self.get_state(), reward, terminated, {}, False
 
   def reset(self):
     self.cart.reset(uniform(self.cart.min_x, self.cart.max_x)/2)
