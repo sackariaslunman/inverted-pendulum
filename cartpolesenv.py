@@ -63,23 +63,29 @@ class CartPolesEnv(gym.Env):
     y = self.cart.height()
 
     terminated = bool(
-      x >= self.cart.max_x or
-      x <= self.cart.min_x or 
-      self.counter_steps_not_up > int(10/self.dt)
+      x > self.cart.max_x or
+      x < self.cart.min_x or 
+      self.counter_steps_not_up > int(0.1/self.dt)
     )
 
-    if y > self.max_height * 0.8 and abs(x-0) < 0.1:
-      reward += 1.0
+    if y > self.max_height * 0.5:#and abs(x-0) < 0.1:
+      reward += 0
       self.counter_steps_not_up = 0
-    
-    elif y < -self.max_height * 0.5:
+      if y > self.max_height * 0.9 and abs(x-0) < 0.2:
+        reward += 1.0
+    else:
       reward -= 1.0
       self.counter_steps_not_up += 1
+
+    if terminated:
+      reward -= 10
+      self.counter_steps_not_up = 0
         
     return self.get_state(), reward, terminated, {}, False
 
   def reset(self):
-    self.cart.reset(uniform(self.cart.min_x, self.cart.max_x)/2)
+    self.close()
+    self.cart.reset(uniform(self.cart.min_x, self.cart.max_x)*0.8)
     for pole in self.cart:
       pole.reset(radians(uniform(-15, 15)))
     self.cart.motor.reset()
@@ -88,7 +94,7 @@ class CartPolesEnv(gym.Env):
   def si_to_pixels(self, x: float):
     return int(x * 500)
 
-  def render(self):
+  def render(self, optional_text: list[str] = []):
     if not self.screen:
       pygame.init()
 
@@ -129,25 +135,26 @@ class CartPolesEnv(gym.Env):
   
     texts = [
       f"Time: {round(self.i*self.dt,2)} s",
-      f"",
-      f"Cart:",
+      "",
+      "Cart:",
       f"Position: {round(self.cart.position(),2)} m",
       f"Velocity: {round(self.cart.velocity(),2)} m/s",
       f"Acceleration: {round(self.cart.acceleration(),2)} m/s^2",
-      f"",
-      f"Motor:",
+      "",
+      "Motor:",
       f"Angle: {round(self.cart.motor.angle(),2)} rad",
       f"Angular velocity: {round(self.cart.motor.angular_velocity(),2)} rad/s",
     ]
+    texts.extend(optional_text)
     
     for k, text_k in enumerate(texts):
       text = self.font.render(text_k, True, Colors.black, Colors.gray)
       text_rect = text.get_rect()
-      self.screen.blit(text,(0,(text_rect.height)*k,text_rect.width,text_rect.height))
+      self.screen.blit(text,(0,20*k,text_rect.width,text_rect.height))
 
     pygame.display.flip()
     self.i += 1
     
   def close(self):
     pygame.quit()
-    sys.exit()
+    self.screen = None

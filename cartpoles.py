@@ -101,7 +101,6 @@ class Cart:
     def height(self, t=None) -> float:
         if not t:
             t = len(self.state["x"])-1
-        
         y = 0
         for pole in self:
             y += pole.l * cos(pole.angle())
