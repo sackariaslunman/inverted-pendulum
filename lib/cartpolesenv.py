@@ -22,6 +22,7 @@ class CartPolesEnv(gym.Env):
     self.dt = dt
     self.g = g
 
+    self.counter_steps_up = 0
     self.counter_steps_not_up = 0
 
     self.screen: pygame.surface.Surface | None = None
@@ -60,7 +61,7 @@ class CartPolesEnv(gym.Env):
     self.cart.update(self.dt, Va, self.g)
     state = self.get_state()
     x = state[0]
-    y = self.cart.height()
+    y = self.cart.end_height()
 
     terminated = bool(
       x > self.cart.max_x or
@@ -68,18 +69,36 @@ class CartPolesEnv(gym.Env):
       self.counter_steps_not_up > int(0.1/self.dt)
     )
 
-    if y > self.max_height * 0.5:#and abs(x-0) < 0.1:
+    if y > self.max_height * 0.95:
       reward += 0
       self.counter_steps_not_up = 0
-      if y > self.max_height * 0.9 and abs(x-0) < 0.2:
-        reward += 1.0
+      # if y > self.max_height * 0.95:
+      reward += 1/(1+abs(x-0))
+      if abs(x-0) < 0.1:
+        self.counter_steps_up += 1
+        reward += 1
+      else:
+        self.counter_steps_up = 0
+
     else:
       reward -= 1.0
       self.counter_steps_not_up += 1
+      self.counter_steps_up = 0
 
     if terminated:
       reward -= 10
       self.counter_steps_not_up = 0
+      self.counter_steps_up = 0
+
+    won_terminated = bool(
+      self.counter_steps_up > int(10/self.dt)
+    )
+
+    if won_terminated and not terminated:
+      terminated = won_terminated
+      reward += 10
+      self.counter_steps_not_up = 0
+      self.counter_steps_up = 0
         
     return self.get_state(), reward, terminated, {}, False
 

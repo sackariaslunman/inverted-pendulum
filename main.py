@@ -1,8 +1,8 @@
 import sys, pygame
 from time import perf_counter
 from math import sin, cos, radians
-from cartpoles import Cart, Pole, DCMotor
-from colors import Colors
+from lib.cartpoles import Cart, Pole, DCMotor
+from lib.colors import Colors
 
 pygame.init()
 

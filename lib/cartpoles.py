@@ -97,10 +97,14 @@ class Cart:
         if not t:
             t = len(self.state["x"])-1
         return self.state["x"][t]
+    
+    def end_position(self, t=None) -> float:
+        x = self.position()
+        for pole in self:
+            x += pole.l * sin(pole.angle())
+        return x
 
-    def height(self, t=None) -> float:
-        if not t:
-            t = len(self.state["x"])-1
+    def end_height(self, t=None) -> float:
         y = 0
         for pole in self:
             y += pole.l * cos(pole.angle())
