@@ -109,9 +109,9 @@ class CartPolesEnv(gym.Env):
     pygame.draw.rect(self.screen, self.system.cart_color, (max_x+20, y0, 10, 10))
 
     motor_x0 = min_x-100
-    omega = state[2]
-    motor_sin = self.si_to_pixels(sin(-omega)*0.05)
-    motor_cos = self.si_to_pixels(cos(-omega)*0.05)
+    theta_m = state[2]
+    motor_sin = self.si_to_pixels(sin(-theta_m)*0.05)
+    motor_cos = self.si_to_pixels(cos(-theta_m)*0.05)
 
     pygame.draw.polygon(self.screen, self.system.motor_color, [
       (motor_x0+motor_sin, y0+motor_cos),
@@ -136,7 +136,7 @@ class CartPolesEnv(gym.Env):
       f"Velocity: {round(state[1],2)} m/s",
       "",
       "Motor:",
-      f"Angle: {round(omega,2)} rad",
+      f"Angle: {round(theta_m,2)} rad",
     ]
     texts.extend(optional_text)
     
