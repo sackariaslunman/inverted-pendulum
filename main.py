@@ -14,12 +14,12 @@ dt = 0.01
 g = 9.81
 
 system = CartPoleSystem(
-    (0.0, 0.5, 0.05, -0.8, 0.8),
-    (0.05, 0.05, 0.01, 0.5, 0.05, -24.0, 24.0),
+    (0.0, 0.5, 0.05, -0.8, 0.8, Colors.red),
+    (0.05, 0.05, 0.01, 0.5, 0.05, -24.0, 24.0, Colors.black),
     [
-        (radians(10), 0.2, 0.2, 0.005),
-        (radians(5), 0.2, 0.15, 0.005),
-        (radians(15), 0.2, 0.10, 0.005),
+        (radians(10), 0.2, 0.2, 0.005, Colors.green),
+        (radians(5), 0.2, 0.15, 0.005, Colors.blue),
+        (radians(15), 0.2, 0.10, 0.005, Colors.purple),
     ],
     g,
     "rk4"
@@ -51,19 +51,19 @@ while True:
 
     x0 = si_to_pixels(state[0]) + width//2
     y0 = height//2
-    pygame.draw.rect(screen, Colors.red, (x0, y0, 20, 10))
+    pygame.draw.rect(screen, system.cart_color, (x0, y0, 20, 10))
 
     max_x = width//2 + si_to_pixels(system.max_x)
     min_x = width//2 + si_to_pixels(system.min_x)
-    pygame.draw.rect(screen, Colors.red, (min_x-10, y0, 10, 10))
-    pygame.draw.rect(screen, Colors.red, (max_x+20, y0, 10, 10))
+    pygame.draw.rect(screen, system.cart_color, (min_x-10, y0, 10, 10))
+    pygame.draw.rect(screen, system.cart_color, (max_x+20, y0, 10, 10))
 
     omega = state[2]
     motor_x0 = min_x-100
     motor_sin = si_to_pixels(sin(-omega)*0.05)
     motor_cos = si_to_pixels(cos(-omega)*0.05)
 
-    pygame.draw.polygon(screen, Colors.black, [
+    pygame.draw.polygon(screen, system.motor_color, [
         (motor_x0+motor_sin, y0+motor_cos),
         (motor_x0+motor_cos, y0-motor_sin),
         (motor_x0-motor_sin, y0-motor_cos),
@@ -71,7 +71,7 @@ while True:
     ])
 
     x0 += 10
-    for k, ((_,_,l,_), color) in enumerate(zip(system.poles, [Colors.green, Colors.blue, Colors.purple])):
+    for k, ((_,_,l,_),color) in enumerate(zip(system.poles,system.pole_colors)):
         x1 = x0 + si_to_pixels(l * sin(state[3+k*2]))
         y1 = y0 + si_to_pixels(-l * cos(state[3+k*2]))
         pygame.draw.line(screen, color, (x0, y0), (x1, y1), 10)

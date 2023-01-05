@@ -1,5 +1,7 @@
 from typing import Dict
 
+color = tuple[int,int,int]
+
 class Colors(Dict):
     red = (255,0,0)
     green = (0,255,0)

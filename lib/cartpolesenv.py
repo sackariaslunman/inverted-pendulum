@@ -56,8 +56,8 @@ class CartPolesEnv(gym.Env):
     y = self.system.end_height()
 
     terminated = bool(
-      x > self.system.max_x or
-      x < self.system.min_x
+      x >= self.system.max_x or
+      x <= self.system.min_x
     )
 
     reward += 1/(1+abs(10*(self.max_height-y))**2) + 1/(1+abs(10*(x-0))**2)
@@ -83,7 +83,8 @@ class CartPolesEnv(gym.Env):
     return int(x * 500)
 
   def get_state(self):
-    return self.system.get_state()
+    state = np.delete(self.system.get_state(), 3, axis=0)
+    return state
 
   def render(self, optional_text: list[str] = []):
     if not self.screen:
@@ -100,19 +101,19 @@ class CartPolesEnv(gym.Env):
 
     x0 = self.si_to_pixels(state[0]) + self.width//2
     y0 = self.height//2
-    pygame.draw.rect(self.screen, Colors.red, (x0, y0, 20, 10))
+    pygame.draw.rect(self.screen, self.system.cart_color, (x0, y0, 20, 10))
 
     max_x = self.width//2 + self.si_to_pixels(self.system.max_x)
     min_x = self.width//2 + self.si_to_pixels(self.system.min_x)
-    pygame.draw.rect(self.screen, Colors.red, (min_x-10, y0, 10, 10))
-    pygame.draw.rect(self.screen, Colors.red, (max_x+20, y0, 10, 10))
+    pygame.draw.rect(self.screen, self.system.cart_color, (min_x-10, y0, 10, 10))
+    pygame.draw.rect(self.screen, self.system.cart_color, (max_x+20, y0, 10, 10))
 
     motor_x0 = min_x-100
     omega = state[2]
     motor_sin = self.si_to_pixels(sin(-omega)*0.05)
     motor_cos = self.si_to_pixels(cos(-omega)*0.05)
 
-    pygame.draw.polygon(self.screen, Colors.black, [
+    pygame.draw.polygon(self.screen, self.system.motor_color, [
       (motor_x0+motor_sin, y0+motor_cos),
       (motor_x0+motor_cos, y0-motor_sin),
       (motor_x0-motor_sin, y0-motor_cos),
@@ -120,10 +121,10 @@ class CartPolesEnv(gym.Env):
     ])
 
     x0 += 10
-    for k, (_,_,l,_) in enumerate(self.system.poles):
+    for k, ((_,_,l,_),color) in enumerate(zip(self.system.poles,self.system.pole_colors)):
       x1 = x0 + self.si_to_pixels(l * sin(state[3+k*2]))
       y1 = y0 + self.si_to_pixels(-l * cos(state[3+k*2]))
-      pygame.draw.line(self.screen, Colors.green, (x0, y0), (x1, y1), 10)
+      pygame.draw.line(self.screen, color, (x0, y0), (x1, y1), 10)
       x0 = x1
       y0 = y1
   

@@ -1,26 +1,28 @@
 from __future__ import annotations
 import numpy as np
 from numpy import sin, cos, pi
+from lib.colors import color
 from lib.numerical import fe_step, rk4_step
 
 class CartPoleSystem:
     def __init__(
         self,
-        cart: tuple[float, float, float, float, float],
-        motor: tuple[float, float, float, float, float, float, float],
-        poles: list[tuple[float, float, float, float]],
+        cart: tuple[float, float, float, float, float, color],
+        motor: tuple[float, float, float, float, float, float, float, color],
+        poles: list[tuple[float, float, float, float, color]],
         g: float,
         integrator: str = "rk4"
     ):
-        self.cart = np.array(cart, dtype=np.float32)
-        x0, m, u_c, min_x, max_x = cart
+        self.cart = np.array(cart[:-1], dtype=np.float32)
+        x0, m, u_c, min_x, max_x, cart_color = cart
         self.m = m
         self.u_c = u_c
         self.min_x = min_x
         self.max_x = max_x
+        self.cart_color = cart_color
         
-        self.motor = np.array(motor, dtype=np.float32)
-        Ra, Jm, Bm, K, r, min_Va, max_Va = motor
+        self.motor = np.array(motor[:-1], dtype=np.float32)
+        Ra, Jm, Bm, K, r, min_Va, max_Va, motor_color = motor
         self.Ra = Ra
         self.Jm = Jm
         self.Bm = Bm
@@ -28,9 +30,11 @@ class CartPoleSystem:
         self.r = r
         self.min_Va = min_Va
         self.max_Va = max_Va
+        self.motor_color = motor_color
 
         self.num_poles = len(poles)
-        self.poles = np.array(poles, dtype=np.float32)
+        self.poles = np.array([pole[:-1] for pole in poles], dtype=np.float32)
+        self.pole_colors = [pole[-1] for pole in poles]
         self.M = self.m + sum(mp for (_, mp, _, _) in self.poles)
         self.g = g
 
