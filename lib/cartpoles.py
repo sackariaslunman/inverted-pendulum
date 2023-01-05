@@ -1,221 +1,91 @@
 from __future__ import annotations
-from math import sin, cos, pi
 import numpy as np
+from numpy import sin, cos
+from lib.numerical import fe_step, rk4_step
 
-class DCMotor:
+class CartPoles:
     def __init__(
-        self, 
-        min_Va: float,
-        max_Va: float,
-        resistance: float, 
-        K: float, 
-        inertia: float, 
-        friction: float, 
-        radius: float, 
-        color: tuple[int,int,int]
+        self,
+        cart: tuple[float, float, float, float, float],
+        motor: tuple[float, float, float, float, float, float, float],
+        poles: list[tuple[float, float, float, float]],
+        g: float,
+        integrator: str = "rk4"
     ):
-
+        self.cart = np.array(cart, dtype=np.float32)
+        x0, m, u_c, min_x, max_x = cart
+        self.m = m
+        self.u_c = u_c
+        self.min_x = min_x
+        self.max_x = max_x
+        
+        self.motor = np.array(motor, dtype=np.float32)
+        Ra, Jm, Bm, K, r, min_Va, max_Va = motor
+        self.Ra = Ra
+        self.Jm = Jm
+        self.Bm = Bm
+        self.K = K
+        self.r = r
         self.min_Va = min_Va
         self.max_Va = max_Va
 
-        self.Ra = resistance
-        self.K = K
-        self.Jm = inertia
-        self.Bm = friction
+        self.num_poles = len(poles)
+        self.poles = np.array(poles, dtype=np.float32)
+        self.M = self.m + sum(mp for (_, mp, _, _) in self.poles)
+        self.g = g
 
-        self.color = color
-        self.r = radius
+        self.integrator = integrator
 
-        self.reset()
+        self.reset(self.get_initial_state())
 
-    def reset(self):
-        self.state = {
-            "omega": [0],
-            "d_omega": [0]
-        }
+    def reset(self, initial_state):
+        self.state = np.array([
+            initial_state
+        ])
+        self.d_state = np.array([
+            np.zeros(len(initial_state))
+        ])
 
-    def angle(self, t=None) -> float:
-        if not t:
-            t = len(self.state["omega"])-1
-        return self.state["omega"][t]
+    def max_height(self) -> float:
+        return sum(l for _,_,l,_ in self.poles)
 
-    def angular_velocity(self, t=None) -> float:
-        if not t:
-            t = len(self.state["d_omega"])-1
-        return self.state["d_omega"][t]
+    def end_height(self, state) -> float:
+        return sum(l*cos(state[3+k*2]) for k, (_,_,l,_) in enumerate(self.poles))
 
-    def update(self, dt, d_x):
+    def get_state(self, t=-1):
+        return self.state[t]
+
+    def get_initial_state(self):
+        return np.hstack([np.array([self.cart[0], 0, 0]), np.hstack([[angle0, 0] for angle0 in self.poles.T[0]])])
+
+    def forward(self, state, u):
+        Va = u[0]
+        sum1 = sum([m*sin(state[3+k*2])*cos(state[3+k*2]) for k,(_,m,_,_) in enumerate(self.poles)])
+        sum2 = sum([m*(l/2)*state[3+k*2+1]**2*sin(state[3+k*2]) for k,(_,m,l,_) in enumerate(self.poles)])
+        sum3 = sum([(u_p*state[3+k*2+1]*cos(state[3+k*2]))/(l/2) for k,(_,_,l,u_p) in enumerate(self.poles)])
+        sum4 = sum([m*cos(state[3+k*2])**2 for k,(m,_,_,_) in enumerate(self.poles)])
+
+        d_x = state[1]
+        dd_x = (self.g*sum1-(7/3)*((1/self.r**2)*((self.K/self.Ra)*(Va*self.r-self.K*state[1])-self.Bm*state[1])+sum2-self.u_c*state[1])-sum3)/(sum4-(7/3)*(self.M+self.Jm/(self.r**2)))
         d_omega = d_x / self.r
-        omega = self.angle() + d_omega * dt
 
-        self.state["d_omega"].append(d_omega)
-        self.state["omega"].append(omega)
+        dd_thetas = np.hstack([[state[3+k*2+1],(3/(7*l/2)*(self.g*sin(state[3+k*2])-dd_x*cos(state[3+k*2])-u_p*state[3+k*2+1]/(m*l/2)))] for k,(_,m,l,u_p) in enumerate(self.poles)])
+        return np.hstack([d_x, dd_x, d_omega, dd_thetas])
 
-class Cart:
-    def __init__(
-        self, 
-        mass: float, 
-        cart_friction: float, 
-        x0: float, 
-        min_x: float, 
-        max_x: float, 
-        color: tuple[int,int,int], 
-        motor: DCMotor, 
-        pole: Pole
-        ):
-
-        self.m = mass
-        self.u_c = cart_friction
-        self.min_x = min_x
-        self.max_x = max_x
-        self.color = color
-
-        self.reset(x0)
-        self.motor = motor
-        self.pole = pole
-
-    def reset(self, x0):
-        self.state = {
-            "x": [x0],
-            "d_x": [0],
-            "dd_x": [0]
-        }
-
-    def __iter__(self):
-        return iter(self.pole)
-
-    def num_of_poles(self):
-        return len(list(self))
-
-    def total_mass(self) -> float:
-        M = self.m
-        for pole in self:
-            M += pole.m
-        return M
-
-    def position(self, t=None) -> float:
-        if not t:
-            t = len(self.state["x"])-1
-        return self.state["x"][t]
-    
-    def end_position(self, t=None) -> float:
-        x = self.position()
-        for pole in self:
-            x += pole.l * sin(pole.angle())
-        return x
-
-    def end_height(self, t=None) -> float:
-        y = 0
-        for pole in self:
-            y += pole.l * cos(pole.angle())
-        return y
-
-    def max_height(self, t=None) -> float:
-        if not t:
-            t = len(self.state["x"])-1
+    def step(self, dt: float, Va: float):
+        state = self.get_state()
+        next_state, d_state = None, None
         
-        y = 0
-        for pole in self:
-            y += pole.l
-        return y
+        if self.integrator == "fe":
+            next_state, d_state = fe_step(dt, self.forward, state, [Va])
+        else:
+            next_state, d_state = rk4_step(dt, self.forward, state, [Va])
 
-    def velocity(self, t=None) -> float:
-        if not t:
-            t = len(self.state["d_x"])-1
-        return self.state["d_x"][t]
 
-    def acceleration(self, t=None) -> float:
-        if not t:
-            t = len(self.state["dd_x"])-1
-        return self.state["dd_x"][t]
+        self.update(next_state, d_state)
 
-    def update(self, dt: float, Va: float, g: float):
-        x = self.position()
-        d_x = self.velocity()
-        M = self.total_mass()
-
-        sum1 = sum([pole.m*sin(pole.angle())*cos(pole.angle()) 
-            for pole in self])
-        sum2 = sum([pole.m*pole.lh()*pole.angular_velocity()**2*sin(pole.angle()) for pole in self])
-        sum3 = sum([pole.u_p*pole.angular_velocity()*cos(pole.angle())/pole.lh() for pole in self])
-        sum4 = sum([pole.m*cos(pole.angle())**2 for pole in self])
-
-        dd_x = (g*sum1-7/3*((1/self.motor.r**2)*(self.motor.K/self.motor.Ra*(Va*self.motor.r-self.motor.K*d_x)-self.motor.Bm*d_x)+sum2-self.u_c*d_x)-sum3)/(sum4-7/3*(M+self.motor.Jm/self.motor.r**2))
-        d_x = d_x + dd_x * dt
-        x = self.clamp(x + d_x * dt)
-
-        self.state["dd_x"].append(dd_x)
-        self.state["d_x"].append(d_x)
-        self.state["x"].append(x)
-
-        for pole in self:
-            pole.update(dt, dd_x, g)
-        self.motor.update(dt, d_x)
-
-    def clamp(self, x: float) -> float:
-        if x > self.max_x:
-            return self.max_x
-        elif x < self.min_x:
-            return self.min_x
-        return x
-
-class Pole:
-    def __init__(
-        self, 
-        mass: float, 
-        angle0: float, 
-        length: float, 
-        pole_friction: float, 
-        color: tuple[int,int,int], 
-        child: Pole | None
-        ):
-
-        self.m = mass
-        self.l = length
-        self.u_p = pole_friction
-        self.color = color  
-
-        self.reset(angle0)
-        self.child = child
-
-    def reset(self, angle0):
-        angle0 = angle0 % (2*pi)
-        self.state = {
-            "theta": [angle0],
-            "d_theta": [0],
-        }
-
-    def lh(self) -> float:
-        return self.l/2
-
-    def __iter__(self):
-        poles = [self]
-        pole = self.child
-        while pole:
-            poles.append(pole)
-            pole = pole.child
-        return iter(poles)
-
-    def angle(self, t=None) -> float:
-        if not t:
-            t = len(self.state["theta"])-1
-        return self.state["theta"][t]
+        return next_state
     
-    def angular_velocity(self, t=None) -> float:
-        if not t:
-            t = len(self.state["d_theta"])-1
-        return self.state["d_theta"][t]
-    
-    def update(self, dt: float, dd_x: float, g: float):
-        theta = self.angle()
-        d_theta = self.angular_velocity()
-
-        dd_theta = 3/(7*self.lh())*(g*sin(theta)-dd_x*cos(theta)-self.u_p*d_theta/(self.m*self.lh()))
-        d_theta = d_theta + dd_theta * dt
-        theta = (theta + d_theta * dt) % (2*pi)
-
-        self.state["d_theta"].append(d_theta)
-        self.state["theta"].append(theta)
-
-    def __str__(self) -> str:
-        return f"Pole:\n  Mass: {self.m}\n  Length: {self.l}\n  Friction: {self.u_p}\n  Child: {self.child is not None}"
+    def update(self, next_state, d_state):
+        self.state = np.vstack([self.state, next_state])
+        self.d_state = np.vstack([self.d_state, d_state])
