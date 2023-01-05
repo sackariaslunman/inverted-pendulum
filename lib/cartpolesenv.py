@@ -53,7 +53,7 @@ class CartPolesEnv(gym.Env):
     Va = action
     state = self.cart_poles.step(self.dt, Va)
     x = state[0]
-    y = self.cart_poles.end_height(state)
+    y = self.cart_poles.end_height()
 
     terminated = bool(
       x > self.cart_poles.max_x or
@@ -84,7 +84,6 @@ class CartPolesEnv(gym.Env):
 
   def get_state(self):
     state = np.delete(self.cart_poles.get_state(), 3, axis=0)
-    print(len(state))
     return state
 
   def render(self, optional_text: list[str] = []):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from numpy import sin, cos
+from numpy import sin, cos, pi
 from lib.numerical import fe_step, rk4_step
 
 class CartPoles:
@@ -49,7 +49,8 @@ class CartPoles:
     def max_height(self) -> float:
         return sum(l for _,_,l,_ in self.poles)
 
-    def end_height(self, state) -> float:
+    def end_height(self) -> float:
+        state = self.get_state()
         return sum(l*cos(state[3+k*2]) for k, (_,_,l,_) in enumerate(self.poles))
 
     def get_state(self, t=-1):
@@ -80,11 +81,26 @@ class CartPoles:
             next_state, d_state = fe_step(dt, self.forward, state, [Va])
         else:
             next_state, d_state = rk4_step(dt, self.forward, state, [Va])
-
+        next_state = self.clamp(next_state)
 
         self.update(next_state, d_state)
 
         return next_state
+
+    def clamp(self, state):
+        x = state[0]
+        if x > self.max_x:
+            x = self.max_x
+        elif x < self.min_x:
+            x = self.min_x
+        state[0] = x
+
+        state[2] %= 2*pi
+
+        for k in range(self.num_poles):
+            state[3+k*2] %= 2*pi
+
+        return state
     
     def update(self, next_state, d_state):
         self.state = np.vstack([self.state, next_state])
