@@ -3,7 +3,7 @@ import numpy as np
 from numpy import sin, cos, pi
 from lib.numerical import fe_step, rk4_step
 
-class CartPoles:
+class CartPoleSystem:
     def __init__(
         self,
         cart: tuple[float, float, float, float, float],

@@ -1,6 +1,6 @@
 import sys, pygame
 from time import perf_counter
-from lib.cartpoles import CartPoles
+from lib.cartpolesystem import CartPoleSystem
 from lib.colors import Colors
 from numpy import sin, cos, radians
 
@@ -13,7 +13,7 @@ screen = pygame.display.set_mode(size)
 dt = 0.01
 g = 9.81
 
-cart_poles = CartPoles(
+system = CartPoleSystem(
     (0.0, 0.5, 0.05, -0.8, 0.8),
     (0.05, 0.05, 0.01, 0.5, 0.05, -24.0, 24.0),
     [
@@ -47,14 +47,14 @@ while True:
 
     screen.fill(Colors.gray)
 
-    state = cart_poles.step(dt, 12*cos(i*dt*2))
+    state = system.step(dt, 12*cos(i*dt*2))
 
     x0 = si_to_pixels(state[0]) + width//2
     y0 = height//2
     pygame.draw.rect(screen, Colors.red, (x0, y0, 20, 10))
 
-    max_x = width//2 + si_to_pixels(cart_poles.max_x)
-    min_x = width//2 + si_to_pixels(cart_poles.min_x)
+    max_x = width//2 + si_to_pixels(system.max_x)
+    min_x = width//2 + si_to_pixels(system.min_x)
     pygame.draw.rect(screen, Colors.red, (min_x-10, y0, 10, 10))
     pygame.draw.rect(screen, Colors.red, (max_x+20, y0, 10, 10))
 
@@ -71,7 +71,7 @@ while True:
     ])
 
     x0 += 10
-    for k, ((_,_,l,_), color) in enumerate(zip(cart_poles.poles, [Colors.green, Colors.blue, Colors.purple])):
+    for k, ((_,_,l,_), color) in enumerate(zip(system.poles, [Colors.green, Colors.blue, Colors.purple])):
         x1 = x0 + si_to_pixels(l * sin(state[3+k*2]))
         y1 = y0 + si_to_pixels(-l * cos(state[3+k*2]))
         pygame.draw.line(screen, color, (x0, y0), (x1, y1), 10)

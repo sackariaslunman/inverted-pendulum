@@ -3,7 +3,7 @@ from random import uniform
 import gym
 from gym import spaces
 import numpy as np
-from lib.cartpoles import CartPoles
+from lib.cartpolesystem import CartPoleSystem
 import pygame
 from time import perf_counter
 from lib.colors import Colors
@@ -11,14 +11,14 @@ from lib.colors import Colors
 class CartPolesEnv(gym.Env):
   def __init__(
     self, 
-    cart_poles: CartPoles, 
+    system: CartPoleSystem, 
     dt: float,
     g: float, 
   ):
 
     super(CartPolesEnv, self).__init__()
-    self.cart_poles = cart_poles
-    self.max_height = cart_poles.max_height()
+    self.system = system
+    self.max_height = system.max_height()
     self.dt = dt
     self.g = g
 
@@ -33,14 +33,14 @@ class CartPolesEnv(gym.Env):
     self.size = self.width, self.height
 
     self.action_space = spaces.Box(
-      low=cart_poles.min_Va,
-      high=cart_poles.max_Va, 
+      low=system.min_Va,
+      high=system.max_Va, 
       dtype=np.float32
     )
 
-    num_of_poles = cart_poles.num_poles
-    obs_lower_bound = np.hstack([np.array([cart_poles.min_x, np.finfo(np.float32).min]), np.tile(np.array([0.0, np.finfo(np.float32).min]), num_of_poles)])
-    obs_upper_bound = np.hstack([np.array([cart_poles.max_x, np.finfo(np.float32).max]), np.tile(np.array([2*pi, np.finfo(np.float32).max]), num_of_poles)])
+    num_of_poles = system.num_poles
+    obs_lower_bound = np.hstack([np.array([system.min_x, np.finfo(np.float32).min]), np.tile(np.array([0.0, np.finfo(np.float32).min]), num_of_poles)])
+    obs_upper_bound = np.hstack([np.array([system.max_x, np.finfo(np.float32).max]), np.tile(np.array([2*pi, np.finfo(np.float32).max]), num_of_poles)])
     self.observation_space = spaces.Box(
       low=obs_lower_bound,
       high=obs_upper_bound, 
@@ -51,13 +51,13 @@ class CartPolesEnv(gym.Env):
   def step(self, action: float):
     reward = 0
     Va = action
-    state = self.cart_poles.step(self.dt, Va)
+    state = self.system.step(self.dt, Va)
     x = state[0]
-    y = self.cart_poles.end_height()
+    y = self.system.end_height()
 
     terminated = bool(
-      x > self.cart_poles.max_x or
-      x < self.cart_poles.min_x
+      x > self.system.max_x or
+      x < self.system.min_x
     )
 
     reward += 1/(1+abs(10*(self.max_height-y))**2) + 1/(1+abs(10*(x-0))**2)
@@ -71,19 +71,19 @@ class CartPolesEnv(gym.Env):
 
   def reset(self):
     self.close()
-    initial_state = [uniform(self.cart_poles.min_x, self.cart_poles.max_x)*0.8, 0, 0]
+    initial_state = [uniform(self.system.min_x, self.system.max_x)*0.8, 0, 0]
 
-    for _ in range(self.cart_poles.num_poles):
+    for _ in range(self.system.num_poles):
       initial_state.extend([radians(uniform(-15, 15)), 0])
 
-    self.cart_poles.reset(initial_state)
+    self.system.reset(initial_state)
     return self.get_state(), {"Msg": "Reset env"}
 
   def si_to_pixels(self, x: float):
     return int(x * 500)
 
   def get_state(self):
-    return self.cart_poles.get_state()
+    return self.system.get_state()
 
   def render(self, optional_text: list[str] = []):
     if not self.screen:
@@ -96,14 +96,14 @@ class CartPolesEnv(gym.Env):
 
     self.screen.fill(Colors.gray)
 
-    state = self.cart_poles.get_state()
+    state = self.system.get_state()
 
     x0 = self.si_to_pixels(state[0]) + self.width//2
     y0 = self.height//2
     pygame.draw.rect(self.screen, Colors.red, (x0, y0, 20, 10))
 
-    max_x = self.width//2 + self.si_to_pixels(self.cart_poles.max_x)
-    min_x = self.width//2 + self.si_to_pixels(self.cart_poles.min_x)
+    max_x = self.width//2 + self.si_to_pixels(self.system.max_x)
+    min_x = self.width//2 + self.si_to_pixels(self.system.min_x)
     pygame.draw.rect(self.screen, Colors.red, (min_x-10, y0, 10, 10))
     pygame.draw.rect(self.screen, Colors.red, (max_x+20, y0, 10, 10))
 
@@ -120,7 +120,7 @@ class CartPolesEnv(gym.Env):
     ])
 
     x0 += 10
-    for k, (_,_,l,_) in enumerate(self.cart_poles.poles):
+    for k, (_,_,l,_) in enumerate(self.system.poles):
       x1 = x0 + self.si_to_pixels(l * sin(state[3+k*2]))
       y1 = y0 + self.si_to_pixels(-l * cos(state[3+k*2]))
       pygame.draw.line(self.screen, Colors.green, (x0, y0), (x1, y1), 10)
