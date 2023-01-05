@@ -83,8 +83,7 @@ class CartPolesEnv(gym.Env):
     return int(x * 500)
 
   def get_state(self):
-    state = np.delete(self.cart_poles.get_state(), 3, axis=0)
-    return state
+    return self.cart_poles.get_state()
 
   def render(self, optional_text: list[str] = []):
     if not self.screen:
@@ -109,8 +108,9 @@ class CartPolesEnv(gym.Env):
     pygame.draw.rect(self.screen, Colors.red, (max_x+20, y0, 10, 10))
 
     motor_x0 = min_x-100
-    motor_sin = self.si_to_pixels(sin(-state[2])*0.05)
-    motor_cos = self.si_to_pixels(cos(-state[2])*0.05)
+    omega = state[2]
+    motor_sin = self.si_to_pixels(sin(-omega)*0.05)
+    motor_cos = self.si_to_pixels(cos(-omega)*0.05)
 
     pygame.draw.polygon(self.screen, Colors.black, [
       (motor_x0+motor_sin, y0+motor_cos),
@@ -135,7 +135,7 @@ class CartPolesEnv(gym.Env):
       f"Velocity: {round(state[1],2)} m/s",
       "",
       "Motor:",
-      f"Angle: {round(state[2],2)} rad",
+      f"Angle: {round(omega,2)} rad",
     ]
     texts.extend(optional_text)
     

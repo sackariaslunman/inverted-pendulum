@@ -95,8 +95,6 @@ class CartPoles:
             x = self.min_x
         state[0] = x
 
-        state[2] %= 2*pi
-
         for k in range(self.num_poles):
             state[3+k*2] %= 2*pi
 

@@ -58,9 +58,10 @@ while True:
     pygame.draw.rect(screen, Colors.red, (min_x-10, y0, 10, 10))
     pygame.draw.rect(screen, Colors.red, (max_x+20, y0, 10, 10))
 
+    omega = state[2]
     motor_x0 = min_x-100
-    motor_sin = si_to_pixels(sin(-state[2])*0.05)
-    motor_cos = si_to_pixels(cos(-state[2])*0.05)
+    motor_sin = si_to_pixels(sin(-omega)*0.05)
+    motor_cos = si_to_pixels(cos(-omega)*0.05)
 
     pygame.draw.polygon(screen, Colors.black, [
         (motor_x0+motor_sin, y0+motor_cos),
@@ -85,7 +86,7 @@ while True:
         f"Velocity: {round(state[1],2)} m/s",
         f"",
         f"Motor:",
-        f"Angle: {round(state[2],2)} rad",
+        f"Angle: {round(omega,2)} rad",
     ]
     
     for k, text_k in enumerate(texts):
