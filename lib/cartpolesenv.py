@@ -1,4 +1,4 @@
-from math import radians, pi, sin, cos
+from numpy import radians, pi, sin, cos
 from random import uniform
 import gym
 from gym import spaces
@@ -39,14 +39,31 @@ class CartPolesEnv(gym.Env):
     )
 
     num_of_poles = system.num_poles
+
     obs_lower_bound = np.hstack([np.array([system.min_x, np.finfo(np.float32).min]), np.tile(np.array([0.0, np.finfo(np.float32).min]), num_of_poles)])
+    
     obs_upper_bound = np.hstack([np.array([system.max_x, np.finfo(np.float32).max]), np.tile(np.array([2*pi, np.finfo(np.float32).max]), num_of_poles)])
+    
     self.observation_space = spaces.Box(
       low=obs_lower_bound,
       high=obs_upper_bound, 
       shape=(2+2*num_of_poles,), 
       dtype=np.float32
     )
+
+  def get_state(self):
+    state = np.delete(self.system.get_state(), 2, axis=0)
+    return state
+
+  def reset(self):
+    self.close()
+    initial_state = [uniform(self.system.min_x, self.system.max_x)*0.8, 0, 0]
+
+    for _ in range(self.system.num_poles):
+      initial_state.extend([radians(uniform(-15, 15)), 0])
+
+    self.system.reset(initial_state)
+    return self.get_state(), {"Msg": "Reset env"}
 
   def step(self, action: float):
     reward = 0
@@ -69,22 +86,8 @@ class CartPolesEnv(gym.Env):
         
     return self.get_state(), reward, terminated, {}, False
 
-  def reset(self):
-    self.close()
-    initial_state = [uniform(self.system.min_x, self.system.max_x)*0.8, 0, 0]
-
-    for _ in range(self.system.num_poles):
-      initial_state.extend([radians(uniform(-15, 15)), 0])
-
-    self.system.reset(initial_state)
-    return self.get_state(), {"Msg": "Reset env"}
-
   def si_to_pixels(self, x: float):
     return int(x * 500)
-
-  def get_state(self):
-    state = np.delete(self.system.get_state(), 3, axis=0)
-    return state
 
   def render(self, optional_text: list[str] = []):
     if not self.screen:
