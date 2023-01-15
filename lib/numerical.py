@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 def fe_step(dt: float, differentiate, x0, u):
     d_x = differentiate(x0, u)
     x = x0 + dt * d_x
