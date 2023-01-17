@@ -1,6 +1,6 @@
 import sys, pygame
 from time import perf_counter
-from lib.cartpoles import CartPoleSystem
+from lib.cartpolesystem import CartPoleSystem
 from lib.colors import Colors
 from numpy import sin, cos, radians
 import numpy as np
