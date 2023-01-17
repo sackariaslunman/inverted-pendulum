@@ -53,7 +53,7 @@ class CartPoleSystem:
     self.dynamics = dynamics
 
     if system_noise_covariance is None:
-      system_noise_covariance = np.diag(np.zeros(2+self.num_poles))
+      system_noise_covariance = np.diag(np.zeros(2+2*self.num_poles))
     if measurement_noise_covariance is None:
       measurement_noise_covariance = np.diag([0])
 
@@ -62,7 +62,10 @@ class CartPoleSystem:
 
     self.reset(self.get_initial_state())
 
-    A, B = self.linearize()
+    x0 = np.vstack(np.tile(np.array([0, 0]), 1+self.num_poles))
+    u0 = np.vstack([0])
+
+    A, B = self.linearize(x0, u0)
     self.A = A
     self.B = B
     
@@ -122,7 +125,6 @@ class CartPoleSystem:
 
     next_state = self.clamp(next_state)
     system_noise = np.array([multivariate_normal(np.zeros(len(state)), self.system_noise_covariance)]).T
-    print(system_noise)
     next_state += system_noise
 
     if update:
@@ -155,7 +157,108 @@ class CartPoleSystem:
     state = state.T[0]
     return sum(l*cos(state[2+k*2]) for k, (_,_,l,_) in enumerate(self.poles))
 
-  def linearize(self):
+  def linearize(self, initial_state, initial_control):
+    initial_state_raw = initial_state
+    initial_control_raw = initial_control
+
+    initial_state = initial_state.T[0]
+    initial_control = initial_control.T[0]
+
+    x = initial_state[0]
+    d_x = initial_state[1]
+
+    Va = initial_control[0]
+
+    r = self.r
+    K = self.K
+    Ra = self.Ra
+    Bm = self.Bm
+    u_c = self.u_c
+    M = self.M
+    Jm = self.Jm
+    g = self.g
+    n = self.num_poles
+
+    f1s = np.hstack([np.array([0, 1]), np.tile([0, 0], n)])
+    f2_dx = 7/3*(1/r**2*(K**2/Ra+Bm)+u_c)/(sum([m*cos(initial_state[2+2*i])**2 for i,(_,m,_,_) in enumerate(self.poles)])-7/3*(M+Jm/r**2))
+    
+    f2_theta_g = g*sum([m*cos(initial_state[2+2*i])*sin(initial_state[2+2*i]) for i,(_,m,_,_) in enumerate(self.poles)])+7/3*(1/r**2*(K*(K*d_x-Va*r)/Ra+Bm*d_x)-sum([m*l/2*initial_state[2+2*i+1]**2*sin(initial_state[2+2*i]) for i,(_,m,l,_) in enumerate(self.poles)])+u_c*d_x)-sum([u_p*initial_state[2+2*i+1]*cos(initial_state[2+2*i])/(l/2) for i,(_,_,l,u_p) in enumerate(self.poles)])
+    f2_theta_h = sum([m*cos(initial_state[2+2*i])**2 for i,(_,m,_,_) in enumerate(self.poles)])-7/3*(M+Jm/r**2)
+
+    def f2_theta_dg(k):
+      theta_k = initial_state[2+2*k]
+      d_theta_k = initial_state[2+2*k+1]
+      _, m_k, l_k, u_p_k = self.poles[k]
+      return g*m_k*(cos(theta_k)**2-sin(theta_k)**2)+7/3*(-m_k*l_k/2*d_theta_k**2*cos(theta_k))+u_p_k*d_theta_k*sin(theta_k)/(l_k/2)
+
+    def f2_theta_dh(k):
+      theta_k = initial_state[2+2*k]
+      d_theta_k = initial_state[2+2*k+1]
+      _, m_k, l_k, u_p_k = self.poles[k]
+      return -2*m_k*sin(theta_k)*cos(theta_k)
+
+    def f2_theta(k):
+      return (f2_theta_dg(k)*f2_theta_h-f2_theta_g*f2_theta_dh(k))/f2_theta_h**2
+
+    def f2_dtheta(k):
+      theta_k = initial_state[2+2*k]
+      d_theta_k = initial_state[2+2*k+1]
+      _, m_k, l_k, u_p_k = self.poles[k]
+      return (7/3*(-2*m_k*l_k/2*d_theta_k*sin(theta_k))-u_p_k*cos(theta_k)/(l_k/2))/(sum([m*cos(initial_state[2+2*i])**2 for i,(_,m,_,_) in enumerate(self.poles)])-7/3*(M+Jm/r**2))
+
+    f2_Va = (-7*K/(3*r*Ra))/(sum([m*cos(initial_state[2+2*i])**2 for i,(_,m,_,_) in enumerate(self.poles)])-7/3*(M+Jm/r**2))
+
+    f2s = np.hstack([np.array([0, f2_dx]), np.hstack([[f2_theta(k), f2_dtheta(k)] for k in range(n)])])
+
+    f2 = (self.differentiate(initial_state_raw, initial_control_raw)).T[0][1]
+
+    def f4_dx(k):
+      theta_k = initial_state[2+2*k]
+      d_theta_k = initial_state[2+2*k+1]
+      _, m_k, l_k, u_p_k = self.poles[k]
+      return (-3/(7*l_k/2))*cos(theta_k)*f2_dx
+
+    def f4_theta(k):
+      theta_k = initial_state[2+2*k]
+      d_theta_k = initial_state[2+2*k+1]
+      _, m_k, l_k, u_p_k = self.poles[k]
+      return (3/(7*l_k/2))*(g*cos(theta_k)-f2_theta(k)*cos(theta_k)+f2*sin(theta_k))
+
+    def f4_dtheta(k):
+      theta_k = initial_state[2+2*k]
+      d_theta_k = initial_state[2+2*k+1]
+      _, m_k, l_k, u_p_k = self.poles[k]
+      return (-3/(7*l_k/2))*(cos(theta_k)*f2_dtheta(k)+u_p_k/(m_k*l_k/2))
+
+    f_rest = np.vstack([
+      [
+        np.hstack([np.zeros(2+2*k+1), [1], np.zeros(2*(n-k-1))]),
+        np.hstack([[0, f4_dx(k)], np.hstack([[f4_theta(i), f4_dtheta(i)] for i in range(n)])])
+      ] for k in range(n)
+    ])
+
+    A = np.array(np.vstack([
+      np.array([
+        f1s,
+        f2s,
+      ]),
+      f_rest
+    ]), dtype=np.float32)
+
+    def f4_Va(k):
+      theta_k = initial_state[2+2*k]
+      d_theta_k = initial_state[2+2*k+1]
+      _, m_k, l_k, u_p_k = self.poles[k]
+      return (-3*cos(theta_k)/(7*l_k/2))*f2_Va
+
+    B = np.array([np.hstack([
+      [0, f2_Va], 
+      np.hstack([[0, f4_Va(k)] for k in range(n)])
+    ])], dtype=np.float32).T
+
+    return A, B
+
+  def linearize_old(self):
     n = self.num_poles
 
     a = (7/3)*((1/self.r**2)*(self.K**2/self.Ra+self.Bm)+self.u_c)
@@ -187,7 +290,7 @@ class CartPoleSystem:
       np.vstack([
         [
           np.hstack([np.zeros(2+2*j+1), [1], np.zeros(2*(n-j-1))]),
-          np.hstack([[0, a*d/b], np.hstack([[gamma_i(i)+d*alpha_i(i)/b, delta_i(i)+d*beta_i(i)/b] for i in range(n)])])
+          np.hstack([[0, a*d/b], np.hstack([[gamma_i(j)+d*alpha_i(i)/b, delta_i(j)+d*beta_i(i)/b] for i in range(n)])])
         ] for j in range(n)
       ])
     ]), dtype=np.float32)

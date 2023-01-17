@@ -10,10 +10,11 @@ Va_max = 24;
 
 A = double(A);
 B = double(B);
+disp(A)
 
-C = eye(4);
+C = eye(6);
 
-D = zeros(4,1);
+D = zeros(6,1);
 
 disp("Is system stable? Eigs: ")
 disp(eigs(A))
@@ -22,9 +23,9 @@ disp(rank(ctrb(A,B)))
 disp("Is system observable? Rank:")
 disp(rank(obsv(A,C)))
 
-Q = diag([20 0.1 10 0.1]);
+Q = diag([20 0.1 10 0.1 10 0.1]);
 
-R = [0.1];
+R = [0.1;];
 
 [K_lqr, S, E] = lqr(A, B, Q, R);
 
@@ -39,9 +40,9 @@ disp(size(K_r))
 % K_lqr = zeros(size(K_lqr));
 % K_r = zeros(size(K_r));
 
-x0 = [0; 0; -15/180*pi; 0;]; 
+x0 = [0; 0; -15/180*pi; 0; -15/180*pi; 0;]; 
 
-t_final = 1;
+t_final = 30;
 
 sim("sim_model.slx")
 

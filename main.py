@@ -11,7 +11,7 @@ size = width, height = 1200, 600
 
 screen = pygame.display.set_mode(size)
 
-dt = 0.001
+dt = 0.01
 g = 9.81
 
 system1 = CartPoleSystem(
