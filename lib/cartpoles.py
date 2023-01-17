@@ -3,13 +3,14 @@ from __future__ import annotations
 import numpy as np
 from numpy import radians, pi, sin, cos
 from numpy.random import multivariate_normal
-from lib.colors import color, Colors
+from lib.colors import Colors, color
 from lib.numerical import fe_step, rk4_step
 from random import uniform
 import gym
 from gym import spaces
 import pygame
 from time import perf_counter
+from scipy.signal import cont2discrete
 
 class CartPoleSystem:
   def __init__(
@@ -18,6 +19,7 @@ class CartPoleSystem:
     motor: tuple[float, float, float, float, float, float, float, color],
     poles: list[tuple[float, float, float, float, color]],
     g: float,
+    dt: float,
     integrator: str = "rk4",
     dynamics: str = "nonlinear",
     system_noise_covariance = None,
@@ -25,6 +27,7 @@ class CartPoleSystem:
   ):
 
     self.cart = np.array(cart[:-1], dtype=np.float32)
+    self.dt = dt
     x0, m, u_c, min_x, max_x, cart_color = cart
     self.m = m
     self.u_c = u_c
@@ -62,12 +65,11 @@ class CartPoleSystem:
 
     self.reset(self.get_initial_state())
 
-    x0 = np.vstack(np.tile(np.array([0, 0]), 1+self.num_poles))
+    x0 = np.vstack(np.tile([0,0], 1+self.num_poles))
     u0 = np.vstack([0])
 
-    A, B = self.linearize(x0, u0)
-    self.A = A
-    self.B = B
+    self.linearize(x0, u0)
+    self.discretize()
     
   def reset(self, initial_state):
     self.state = np.hstack([
@@ -98,9 +100,9 @@ class CartPoleSystem:
     return new_state
 
   def linear_differentiate(self, state, u):
-    Ax = self.A @ state
-    Bu = self.B @ u
-    next_state = Ax + Bu
+    Ax_d = self.A_d @ state
+    Bu_d = self.B_d @ u
+    next_state = Ax_d + Bu_d
     return next_state
 
   def get_state(self, t=-1):
@@ -256,6 +258,9 @@ class CartPoleSystem:
       np.hstack([[0, f4_Va(k)] for k in range(n)])
     ])], dtype=np.float32).T
 
+    self.A = A
+    self.B = B
+
     return A, B
 
   def linearize_old(self):
@@ -300,7 +305,19 @@ class CartPoleSystem:
       np.tile([0, c*d/b], n)
     ])], dtype=np.float32).T
 
+    self.A = A
+    self.B = B
+
     return A, B
+
+  def discretize(self):
+    dlti = cont2discrete((self.A,self.B,None,None),self.dt)
+    A_d = np.array(dlti[0])
+    B_d = np.array(dlti[1])
+    self.A_d = A_d
+    self.B_d = B_d
+    return A_d, B_d
+    
 
 class CartPolesEnv(gym.Env):
   def __init__(

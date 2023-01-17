@@ -23,7 +23,7 @@ disp(rank(ctrb(A,B)))
 disp("Is system observable? Rank:")
 disp(rank(obsv(A,C)))
 
-Q = diag([20 0.1 10 0.1 10 0.1]);
+Q = diag([1 1 1 1 1 1]);
 
 R = [0.1;];
 
@@ -53,33 +53,46 @@ x3 = ans.sim_X.signals.values(:,3);
 x4 = ans.sim_X.signals.values(:,4);
 u1 = ans.sim_U.signals.values(:,1);
 
+x5 = ans.sim_X.signals.values(:,5);
+x6 = ans.sim_X.signals.values(:,6);
+
 % plot
 close all
 
 figure
-subplot(5,1,1)
+subplot(7,1,1)
 plot(t, x1, "LineWidth", 3)
 grid on
 legend("x")
 
-subplot(5,1,2)
+subplot(7,1,2)
 plot(t, x2, "LineWidth", 3)
 grid on
 legend("d_x")
 
-subplot(5,1,3)
+subplot(7,1,3)
 plot(t, x3, "LineWidth", 3)
 grid on
-legend("theta")
+legend("theta1")
 
-subplot(5,1,4)
+subplot(7,1,4)
 plot(t, x4, "LineWidth", 3)
 grid on
-legend("d_theta")
+legend("d_theta1")
 
-subplot(5,1,5)
+subplot(7,1,5)
 plot(t, u1, "LineWidth", 3)
 grid on
 legend("Va")
+
+subplot(7,1,6)
+plot(t, x5, "LineWidth", 3)
+grid on
+legend("theta2")
+
+subplot(7,1,7)
+plot(t, x6, "LineWidth", 3)
+grid on
+legend("d_theta2")
 
 

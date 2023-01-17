@@ -19,10 +19,11 @@ system1 = CartPoleSystem(
     (0.05, 0.05, 0.01, 0.5, 0.05, -24.0, 24.0, Colors.black),
     [
         (radians(10), 0.2, 0.2, 0.005, Colors.green),
-        # (radians(5), 0.3, 0.15, 0.005, Colors.blue),
-        # (radians(15), 0.4, 0.1, 0.005, Colors.purple),
+        (radians(5), 0.3, 0.15, 0.005, Colors.blue),
+        (radians(15), 0.4, 0.1, 0.005, Colors.purple),
     ],
     g,
+    dt,
     "rk4",
     "nonlinear"
 )
