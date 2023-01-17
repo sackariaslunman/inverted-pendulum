@@ -19,7 +19,7 @@ class CartPoleSystem:
     system_noise_covariance = None,
   ):
 
-    self.cart = np.array(cart[:-1], dtype=np.float32)
+    self.cart = np.array(cart[:-1], dtype=np.float64)
     self.dt = dt
     x0, m, u_c, min_x, max_x, cart_color = cart
     self.m = m
@@ -28,7 +28,7 @@ class CartPoleSystem:
     self.max_x = max_x
     self.cart_color = cart_color
     
-    self.motor = np.array(motor[:-1], dtype=np.float32)
+    self.motor = np.array(motor[:-1], dtype=np.float64)
     Ra, Jm, Bm, K, r, min_Va, max_Va, motor_color = motor
     self.Ra = Ra
     self.Jm = Jm
@@ -40,7 +40,7 @@ class CartPoleSystem:
     self.motor_color = motor_color
 
     self.num_poles = len(poles)
-    self.poles = np.array([pole[:-1] for pole in poles], dtype=np.float32)
+    self.poles = np.array([pole[:-1] for pole in poles], dtype=np.float64)
     self.pole_colors = [pole[-1] for pole in poles]
     self.M = self.m + sum(mp for (_, mp, _, _) in self.poles)
     self.g = g
@@ -204,28 +204,52 @@ class CartPoleSystem:
 
     f2 = (self.differentiate(initial_state_raw, initial_control_raw)).T[0][1]
 
-    def f4_dx(k):
+    def fk2_dx(k):
       theta_k = initial_state[2+2*k]
       d_theta_k = initial_state[2+2*k+1]
       _, m_k, l_k, u_p_k = self.poles[k]
       return (-3/(7*l_k/2))*cos(theta_k)*f2_dx
 
-    def f4_theta(k):
+    def fk2_theta_k(k):
       theta_k = initial_state[2+2*k]
       d_theta_k = initial_state[2+2*k+1]
       _, m_k, l_k, u_p_k = self.poles[k]
       return (3/(7*l_k/2))*(g*cos(theta_k)-f2_theta(k)*cos(theta_k)+f2*sin(theta_k))
-
-    def f4_dtheta(k):
+    
+    def fk2_theta_j(k, j):
       theta_k = initial_state[2+2*k]
       d_theta_k = initial_state[2+2*k+1]
       _, m_k, l_k, u_p_k = self.poles[k]
-      return (-3/(7*l_k/2))*(cos(theta_k)*f2_dtheta(k)+u_p_k/(m_k*l_k/2))
+      return (-3/(7*l_k/2))*cos(theta_k)*f2_theta(j)
+
+    def fk2_dtheta_k(k):
+      theta_k = initial_state[2+2*k]
+      d_theta_k = initial_state[2+2*k+1]
+      _, m_k, l_k, u_p_k = self.poles[k]
+      return (-3/(7*l_k/2))*(f2_dtheta(k)*cos(theta_k)+u_p_k/(m_k*l_k/2))
+
+    def fk2_dtheta_j(k, j):
+      theta_k = initial_state[2+2*k]
+      d_theta_k = initial_state[2+2*k+1]
+      _, m_k, l_k, u_p_k = self.poles[k]
+      return (-3/(7*l_k/2))*cos(theta_k)*f2_dtheta(j)
+
+    def fk2_theta(k,j):
+      if k == j:
+        return fk2_theta_k(k)
+      else:
+        return fk2_theta_j(k,j)
+
+    def fk2_dtheta(k,j):
+      if k == j:
+        return fk2_dtheta_k(k)
+      else:
+        return fk2_dtheta_j(k,j)
 
     f_rest = np.vstack([
       [
         np.hstack([np.zeros(2+2*k+1), [1], np.zeros(2*(n-k-1))]),
-        np.hstack([[0, f4_dx(k)], np.hstack([[f4_theta(i), f4_dtheta(i)] for i in range(n)])])
+        np.hstack([[0, fk2_dx(k)], np.hstack([[fk2_theta(k,j), fk2_dtheta(k,j)] for j in range(n)])])
       ] for k in range(n)
     ])
 
@@ -235,9 +259,9 @@ class CartPoleSystem:
         f2s,
       ]),
       f_rest
-    ]), dtype=np.float32)
+    ]), dtype=np.float64)
 
-    def f4_Va(k):
+    def fk2_Va(k):
       theta_k = initial_state[2+2*k]
       d_theta_k = initial_state[2+2*k+1]
       _, m_k, l_k, u_p_k = self.poles[k]
@@ -245,8 +269,8 @@ class CartPoleSystem:
 
     B = np.array([np.hstack([
       [0, f2_Va], 
-      np.hstack([[0, f4_Va(k)] for k in range(n)])
-    ])], dtype=np.float32).T
+      np.hstack([[0, fk2_Va(k)] for k in range(n)])
+    ])], dtype=np.float64).T
 
     self.A = A
     self.B = B
@@ -288,12 +312,12 @@ class CartPoleSystem:
           np.hstack([[0, a*d/b], np.hstack([[gamma_i(j)+d*alpha_i(i)/b, delta_i(j)+d*beta_i(i)/b] for i in range(n)])])
         ] for j in range(n)
       ])
-    ]), dtype=np.float32)
+    ]), dtype=np.float64)
 
     B = np.array([np.hstack([
       [0, c/b], 
       np.tile([0, c*d/b], n)
-    ])], dtype=np.float32).T
+    ])], dtype=np.float64).T
 
     self.A = A
     self.B = B

@@ -36,20 +36,20 @@ class CartPoleEnv(gym.Env):
     self.action_space = spaces.Box(
       low=system.min_Va,
       high=system.max_Va, 
-      dtype=np.float32
+      dtype=np.float64
     )
 
     num_of_poles = system.num_poles
 
-    obs_lower_bound = np.array([ np.hstack([np.array([system.min_x, np.finfo(np.float32).min]), np.tile(np.array([0.0, np.finfo(np.float32).min]), num_of_poles)]) ]).T
+    obs_lower_bound = np.array([ np.hstack([np.array([system.min_x, np.finfo(np.float64).min]), np.tile(np.array([0.0, np.finfo(np.float64).min]), num_of_poles)]) ]).T
     
-    obs_upper_bound = np.array([ np.hstack([np.array([system.max_x, np.finfo(np.float32).max]), np.tile(np.array([2*pi, np.finfo(np.float32).max]), num_of_poles)]) ]).T
+    obs_upper_bound = np.array([ np.hstack([np.array([system.max_x, np.finfo(np.float64).max]), np.tile(np.array([2*pi, np.finfo(np.float64).max]), num_of_poles)]) ]).T
     
     self.observation_space = spaces.Box(
       low=obs_lower_bound,
       high=obs_upper_bound, 
       shape=obs_lower_bound.shape, 
-      dtype=np.float32
+      dtype=np.float64
     )
 
   def get_state(self):
