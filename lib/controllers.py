@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 from scipy.signal import cont2discrete
 import numpy as np
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 
 class FSFB:
-    def __init__(self, A, B, C, D, dt: float, saturation = None):
+    def __init__(self, A, B, C, D, dt: float):
         self.A = A
         self.B = B
         self.C = C
@@ -12,15 +11,11 @@ class FSFB:
         self.dt = dt
 
         self.discretize()
-        self.saturation = saturation
 
     def discretize(self):
         dlti = cont2discrete((self.A,self.B,self.C,self.D),self.dt)
         self.A_d = np.array(dlti[0])
         self.B_d = np.array(dlti[1])
-
-    def calculate_K_r(self):
-        pass
 
 class LQR(FSFB):
     def calculate_K_lqr(self, Q, R):
@@ -43,10 +38,10 @@ class LQR(FSFB):
         K_r_d = np.nan_to_num(K_r_d)
         self.K_r_d = K_r_d.T
 
-    def feedforward(self, state, r):
+    def feedback(self, state, r):
         u = self.K_r @ r - self.K_lqr @ state
         return u
 
-    def feedforward_d(self, state, r):
+    def feedback_d(self, state, r):
         u_d = self.K_r_d @ r - self.K_lqr_d @ state
         return u_d
