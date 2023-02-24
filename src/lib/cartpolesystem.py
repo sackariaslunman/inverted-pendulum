@@ -55,7 +55,7 @@ class CartPoleSystem:
 
     self.reset(self.get_initial_state())
 
-    x0 = np.vstack(np.tile([0,0], 1+self.num_poles))
+    x0 = np.zeros((2+2*self.num_poles, 1))
     u0 = np.vstack([0])
 
     self.linearize(x0, u0)

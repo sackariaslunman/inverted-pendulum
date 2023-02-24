@@ -65,7 +65,7 @@ class CartPoleEnv(gym.Env):
       self.counter_up = 0
 
       for _ in range(self.system.num_poles):
-        initial_state.extend([radians(uniform(-15, 15)), 0])
+        initial_state.extend([radians(uniform(-50, 50)), 0])
 
       initial_state = np.array([initial_state]).T
 
