@@ -9,13 +9,15 @@ class DirectCollocation():
         self.N_states = N_states
         self.N_controls = N_controls
 
-    def make_guess(self, start_state, final_state):
+    def make_guess(self, start_state, final_state, start_control, final_control):
         self.start_state = start_state.T[0]
         self.final_state = final_state.T[0]
+        self.start_control = start_control.T[0]
+        self.final_control = final_control.T[0]
 
         self.initial_variables = np.hstack([
             np.hstack([np.linspace(start, final, self.N) for start, final in zip(self.start_state, self.final_state)]),
-            np.zeros(self.N*self.N_controls)
+            np.hstack([np.linspace(start, final, self.N) for start, final in zip(self.start_control, self.final_control)]),
         ])
         return self.initial_variables
     
@@ -40,6 +42,10 @@ class DirectCollocation():
             constraints.append(state[self.N*k]-self.start_state[k])
             constraints.append(state[self.N*k+self.N-1]-self.final_state[k])
 
+        for k in range(self.N_controls):
+            constraints.append(control[self.N*k]-self.start_control[k])
+            constraints.append(control[self.N*k+self.N-1]-self.final_control[k])
+
         state_current = state[0::self.N]
         control_current = control[0::self.N]
         dynamics_current = self.dynamics(np.vstack(state_current), np.vstack(control_current)).T[0]
@@ -61,11 +67,11 @@ class DirectCollocation():
     def ineq_constraints(self, variables):
         pass
 
-    def make_controller(self, time, N_spline, start_state, final_state):
+    def make_controller(self, time, N_spline, start_state, final_state, start_control, final_control):
         self.time = time
         self.N_spline = N_spline
         self.h = (self.time)/self.N
-        self.make_guess(start_state, final_state)
+        self.make_guess(start_state, final_state, start_control, final_control)
         constraints_dict = {"type": "eq", "fun": self.eq_constraints}
 
         sol = minimize(
