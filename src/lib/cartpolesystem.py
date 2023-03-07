@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from numpy import sin, cos
+from numpy import sin, cos, pi
 from numpy.random import multivariate_normal
 from lib.colors import color
 from lib.numerical import fe_step, rk4_step
@@ -10,7 +10,7 @@ class CartPoleSystem:
   def __init__(
     self,
     cart: tuple[float, float, float, float, float, color],
-    motor: tuple[float, float, float, float, float, float, float, color],
+    motor: tuple[float, float, float, float, float, float, color],
     poles: list[tuple[float, float, float, float, color]],
     g: float,
     dt: float,
@@ -29,13 +29,12 @@ class CartPoleSystem:
     self.cart_color = cart_color
     
     self.motor = np.array(motor[:-1], dtype=np.float64)
-    Ra, Jm, Bm, K, r, min_Va, max_Va, motor_color = motor
+    Ra, Jm, Bm, K, r, max_Va, motor_color = motor
     self.Ra = Ra
     self.Jm = Jm
     self.Bm = Bm
     self.K = K
     self.r = r
-    self.min_Va = min_Va
     self.max_Va = max_Va
     self.motor_color = motor_color
 
@@ -44,6 +43,12 @@ class CartPoleSystem:
     self.pole_colors = [pole[-1] for pole in poles]
     self.M = self.m + sum(mp for (_, mp, _, _) in self.poles)
     self.g = g
+
+    self.state_lower_bound = np.array([ np.hstack([np.array([min_x, np.finfo(np.float64).min]), np.tile(np.array([-2*pi, np.finfo(np.float64).min]), self.num_poles)]) ]).T
+    self.state_upper_bound = np.array([ np.hstack([np.array([max_x, np.finfo(np.float64).max]), np.tile(np.array([ 2*pi, np.finfo(np.float64).max]), self.num_poles)]) ]).T
+   
+    self.control_lower_bound = np.vstack([-max_Va])
+    self.control_upper_bound = np.vstack([max_Va])
 
     self.integrator = integrator
     self.dynamics = dynamics
@@ -68,6 +73,10 @@ class CartPoleSystem:
     self.d_state = np.hstack([
       np.zeros(initial_state.shape)
     ])
+
+  def clip_state(self, state):
+    state = np.clip(state, self.state_lower_bound, self.state_upper_bound)
+    return state
 
   def get_initial_state(self):
     state = np.array([np.hstack([np.array([self.cart[0], 0]), np.hstack([[angle0, 0] for angle0 in self.poles.T[0]])])]).T
@@ -115,7 +124,8 @@ class CartPoleSystem:
 
       next_state, d_state = integration_scheme(dt, self.differentiate, state, u)
 
-    next_state = self.clamp(next_state)
+    next_state = self.clip_state(next_state)
+
     system_noise = np.array([multivariate_normal(np.zeros(len(state)), self.system_noise_covariance)]).T
     next_state += system_noise
 
@@ -123,19 +133,6 @@ class CartPoleSystem:
       self.update(next_state, d_state)
 
     return next_state, d_state
-
-  def clamp(self, state):
-    # x = state[0]
-    # if x > self.max_x:
-    #   x = self.max_x
-    # elif x < self.min_x:
-    #   x = self.min_x
-    # state[0] = x
-
-    # for k in range(self.num_poles):
-    #   state[2+k*2] %= 2*pi
-
-    return state
 
   def update(self, next_state, d_state):
     self.state = np.hstack([self.state, next_state])

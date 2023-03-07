@@ -3,21 +3,25 @@ from scipy.optimize import minimize
 from scipy.interpolate import CubicSpline
 
 class DirectCollocation():
-    def __init__(self, N: int, dynamics, N_states: int, N_controls: int):
+    def __init__(self, N: int, dynamics, N_states: int, N_controls: int, state_lower_bound, state_upper_bound, control_lower_bound, control_upper_bound, tolerance=1e-6):
         self.N = N
         self.dynamics = dynamics
         self.N_states = N_states
         self.N_controls = N_controls
 
-    def make_guess(self, start_state, final_state, start_control, final_control):
+        self.state_lower_bound = state_lower_bound.T[0]
+        self.state_upper_bound = state_upper_bound.T[0]
+        self.control_lower_bound = control_lower_bound.T[0]
+        self.control_upper_bound = control_upper_bound.T[0]
+        self.tolerance = tolerance
+
+    def make_guess(self, start_state, final_state):
         self.start_state = start_state.T[0]
         self.final_state = final_state.T[0]
-        self.start_control = start_control.T[0]
-        self.final_control = final_control.T[0]
 
         self.initial_variables = np.hstack([
             np.hstack([np.linspace(start, final, self.N) for start, final in zip(self.start_state, self.final_state)]),
-            np.hstack([np.linspace(start, final, self.N) for start, final in zip(self.start_control, self.final_control)]),
+            np.zeros(self.N_controls*self.N),
         ])
         return self.initial_variables
     
@@ -42,10 +46,6 @@ class DirectCollocation():
             constraints.append(state[self.N*k]-self.start_state[k])
             constraints.append(state[self.N*k+self.N-1]-self.final_state[k])
 
-        for k in range(self.N_controls):
-            constraints.append(control[self.N*k]-self.start_control[k])
-            constraints.append(control[self.N*k+self.N-1]-self.final_control[k])
-
         state_current = state[0::self.N]
         control_current = control[0::self.N]
         dynamics_current = self.dynamics(np.vstack(state_current), np.vstack(control_current)).T[0]
@@ -65,30 +65,52 @@ class DirectCollocation():
         return constraints
 
     def ineq_constraints(self, variables):
-        pass
+        state, control = self.variables_to_state_control(variables)
+        constraints = []
 
-    def make_controller(self, time, N_spline, start_state, final_state, start_control, final_control):
+        for k in range(self.N):
+            current_state = state[k::self.N]
+            current_control = control[k::self.N]
+
+            constraints.extend(list(np.array(current_state)-self.state_lower_bound))
+            constraints.extend(list(self.state_upper_bound-np.array(current_state)))
+            constraints.extend(list(np.array(current_control)-self.control_lower_bound))
+            constraints.extend(list(self.control_upper_bound-np.array(current_control)))
+
+        return constraints
+
+
+    def make_controller(self, time, N_spline, start_state, final_state):
         self.time = time
         self.N_spline = N_spline
         self.h = (self.time)/self.N
-        self.make_guess(start_state, final_state, start_control, final_control)
-        constraints_dict = {"type": "eq", "fun": self.eq_constraints}
+
+        self.make_guess(start_state, final_state)
+        constraints = [
+            {"type": "eq", "fun": self.eq_constraints},
+            {"type": "ineq", "fun": self.ineq_constraints},
+        ]
 
         sol = minimize(
             fun=self.objective_function,
             x0=self.initial_variables,
             method="SLSQP",
-            constraints=constraints_dict
+            constraints=constraints,
+            tol=self.tolerance
         )
         state, control = self.variables_to_state_control(sol.x)
         N_time = np.linspace(0, time, self.N)
-        N_spline_time = np.linspace(0, time, N_spline)
 
-        state_spline = np.vstack([
-            CubicSpline(N_time, s_row)(N_spline_time) for s_row in state.reshape((self.N_states, self.N))
-        ])
-        control_spline = np.vstack([
-            np.interp(N_spline_time, N_time, c_row) for c_row in control.reshape((self.N_controls, self.N))
-        ])
+        if N_spline:
+            N_spline_time = np.linspace(0, time, N_spline)
+
+            state_spline = np.vstack([
+                CubicSpline(N_time, s_row)(N_spline_time) for s_row in state.reshape((self.N_states, self.N))
+            ])
+            control_spline = np.vstack([
+                np.interp(N_spline_time, N_time, c_row) for c_row in control.reshape((self.N_controls, self.N))
+            ])
+        else:
+            state_spline, control_spline = np.vstack(state), np.vstack(control)
 
         return state_spline, control_spline

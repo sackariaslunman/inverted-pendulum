@@ -1,22 +1,20 @@
 from __future__ import annotations
 import numpy as np
-from numpy import radians, pi, sin, cos
+from numpy import radians, sin, cos
 from lib.colors import Colors
 from random import uniform
-import gym
-from gym import spaces
+from gym import spaces, Env
 import pygame
 from time import perf_counter
 from lib.cartpolesystem import CartPoleSystem
 
-class CartPoleEnv(gym.Env):
+class CartPoleEnv(Env):
   def __init__(
     self, 
     system: CartPoleSystem, 
     dt: float,
     g: float
   ):
-
     super(CartPoleEnv, self).__init__()
     self.system = system
     self.max_height = system.max_height()
@@ -34,26 +32,20 @@ class CartPoleEnv(gym.Env):
     self.size = self.width, self.height
 
     self.action_space = spaces.Box(
-      low=system.min_Va,
-      high=system.max_Va, 
+      low=system.control_lower_bound,
+      high=system.control_upper_bound, 
       dtype=np.float64
     )
-
-    num_of_poles = system.num_poles
-
-    obs_lower_bound = np.array([ np.hstack([np.array([system.min_x, np.finfo(np.float64).min]), np.tile(np.array([0.0, np.finfo(np.float64).min]), num_of_poles)]) ]).T
-    
-    obs_upper_bound = np.array([ np.hstack([np.array([system.max_x, np.finfo(np.float64).max]), np.tile(np.array([2*pi, np.finfo(np.float64).max]), num_of_poles)]) ]).T
     
     self.observation_space = spaces.Box(
-      low=obs_lower_bound,
-      high=obs_upper_bound, 
-      shape=obs_lower_bound.shape, 
+      low=system.state_lower_bound,
+      high=system.state_upper_bound,
       dtype=np.float64
     )
 
   def get_state(self):
     state = self.system.get_state()
+
     return state
 
   def reset(self, initial_state = None):
