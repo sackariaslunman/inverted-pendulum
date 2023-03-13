@@ -15,12 +15,12 @@ class DirectCollocation():
         self.control_upper_bound = control_upper_bound.T[0]
         self.tolerance = tolerance
 
-    def make_guess(self, start_state, final_state):
-        self.start_state = start_state.T[0]
+    def make_guess(self, initial_state, final_state):
+        self.initial_state = initial_state.T[0]
         self.final_state = final_state.T[0]
 
         self.initial_variables = np.hstack([
-            np.hstack([np.linspace(start, final, self.N) for start, final in zip(self.start_state, self.final_state)]),
+            np.hstack([np.linspace(initial, final, self.N) for initial, final in zip(self.initial_state, self.final_state)]),
             np.zeros(self.N_controls*self.N),
         ])
         return self.initial_variables
@@ -43,7 +43,7 @@ class DirectCollocation():
         constraints = []
 
         for k in range(self.N_states):
-            constraints.append(state[self.N*k]-self.start_state[k])
+            constraints.append(state[self.N*k]-self.initial_state[k])
             constraints.append(state[self.N*k+self.N-1]-self.final_state[k])
 
         state_current = state[0::self.N]
@@ -79,13 +79,12 @@ class DirectCollocation():
 
         return constraints
 
-
-    def make_controller(self, time, N_spline, start_state, final_state):
+    def make_controller(self, time, initial_state, final_state, N_spline=None):
         self.time = time
         self.N_spline = N_spline
         self.h = (self.time)/self.N
 
-        self.make_guess(start_state, final_state)
+        self.make_guess(initial_state, final_state)
         constraints = [
             {"type": "eq", "fun": self.eq_constraints},
             {"type": "ineq", "fun": self.ineq_constraints},

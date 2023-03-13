@@ -75,7 +75,14 @@ class CartPoleSystem:
     ])
 
   def clip_state(self, state):
+    for k in range(self.num_poles):
+      if state[2+k*2] > 2*pi:
+        state[2+k*2] -= 2*pi
+      elif state[2+k*2] < -2*pi:
+        state[2+k*2] += 2*pi
+
     state = np.clip(state, self.state_lower_bound, self.state_upper_bound)
+
     return state
 
   def get_initial_state(self):
@@ -267,53 +274,6 @@ class CartPoleSystem:
     B = np.array([np.hstack([
       [0, f2_Va], 
       np.hstack([[0, fk2_Va(k)] for k in range(n)])
-    ])], dtype=np.float64).T
-
-    self.A = A
-    self.B = B
-
-    return A, B
-
-  def linearize_old(self):
-    n = self.num_poles
-
-    a = (7/3)*((1/self.r**2)*(self.K**2/self.Ra+self.Bm)+self.u_c)
-    b = sum([m*l**2 for _,m,l,_ in self.poles]) - (7/3)*(self.M + self.Jm/self.r**2)
-    c = -7*self.K/(3*self.Ra*self.r)
-    d = -6/7
-
-    def alpha_i(i):
-      _,m,l,_ = self.poles[i]
-      return self.g*m*l
-
-    def beta_i(i):
-      _,_,_,u_p = self.poles[i]
-      return -2*u_p
-
-    def gamma_i(i):
-      _,_,l,_ = self.poles[i]
-      return 6*self.g/(7*l)
-
-    def delta_i(i):
-      _,m,l,u_p = self.poles[i]
-      return -12*u_p/(7*m*l**2)
-    
-    A = np.array(np.vstack([
-      np.array([
-        np.hstack([[0, 1], np.zeros(n*2)]),
-        np.hstack([[0, a/b], np.hstack([[alpha_i(i)/b, beta_i(i)/b] for i in range(n)])]),
-      ]),
-      np.vstack([
-        [
-          np.hstack([np.zeros(2+2*j+1), [1], np.zeros(2*(n-j-1))]),
-          np.hstack([[0, a*d/b], np.hstack([[gamma_i(j)+d*alpha_i(i)/b, delta_i(j)+d*beta_i(i)/b] for i in range(n)])])
-        ] for j in range(n)
-      ])
-    ]), dtype=np.float64)
-
-    B = np.array([np.hstack([
-      [0, c/b], 
-      np.tile([0, c*d/b], n)
     ])], dtype=np.float64).T
 
     self.A = A
