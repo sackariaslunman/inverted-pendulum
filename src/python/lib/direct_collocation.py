@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import minimize
 from scipy.interpolate import CubicSpline
+from time import perf_counter
 
 class DirectCollocation():
     def __init__(self, N: int, dynamics, N_states: int, N_controls: int, state_lower_bound, state_upper_bound, control_lower_bound, control_upper_bound, tolerance=1e-6):
@@ -14,6 +15,13 @@ class DirectCollocation():
         self.control_lower_bound = control_lower_bound.T[0]
         self.control_upper_bound = control_upper_bound.T[0]
         self.tolerance = tolerance
+        
+        self.times = {
+            "variables": [],
+            "objective": [],
+            "eq_constraints": [],
+            "ineq_constraints": [],
+        }
 
     def make_guess(self, initial_state, final_state):
         self.initial_state = initial_state.T[0]
@@ -26,20 +34,25 @@ class DirectCollocation():
         return self.initial_variables
     
     def variables_to_state_control(self, variables):
+        start_time = perf_counter()
         state = variables[:self.N_states*self.N]
         control = variables[self.N_states*self.N:(self.N_states+self.N_controls)*self.N]
+        self.times["variables"].append(perf_counter()-start_time)
         return state, control
 
     def objective_function(self, variables):
         state, control = self.variables_to_state_control(variables)
+        start_time = perf_counter()
         result = 0
         for i in range(self.N_controls):
             for k in range(self.N-1):
                 result += (self.h/2)*(control[self.N*i+k]**2+control[self.N*i+k+1]**2)
+        self.times["objective"].append(perf_counter()-start_time)
         return result
 
     def eq_constraints(self, variables):
         state, control = self.variables_to_state_control(variables)
+        start_time = perf_counter()
         constraints = []
 
         for k in range(self.N_states):
@@ -61,11 +74,12 @@ class DirectCollocation():
             state_current = state_next
             control_current = control_next
             dynamics_current = dynamics_next
-        
+        self.times["eq_constraints"].append(perf_counter()-start_time)
         return constraints
 
     def ineq_constraints(self, variables):
         state, control = self.variables_to_state_control(variables)
+        start_time = perf_counter()
         constraints = []
 
         for k in range(self.N):
@@ -77,6 +91,7 @@ class DirectCollocation():
             constraints.extend(list(np.array(current_control)-self.control_lower_bound))
             constraints.extend(list(self.control_upper_bound-np.array(current_control)))
 
+        self.times["ineq_constraints"].append(perf_counter()-start_time)
         return constraints
 
     def make_controller(self, time, initial_state, final_state, N_spline=None):
@@ -93,7 +108,7 @@ class DirectCollocation():
         sol = minimize(
             fun=self.objective_function,
             x0=self.initial_variables,
-            method="SLSQP",
+            # method="SLSQP",
             constraints=constraints,
             tol=self.tolerance
         )
@@ -111,5 +126,13 @@ class DirectCollocation():
             ])
         else:
             state_spline, control_spline = np.vstack(state), np.vstack(control)
+
+        keys = list(self.times.keys())
+        for key in keys:
+            self.times[f"{key}_mean"] = np.mean(self.times[key])
+            self.times[f"{key}_total"] = sum(self.times[key])
+            self.times[key] = len(self.times[key])
+
+        print(self.times)
 
         return state_spline, control_spline

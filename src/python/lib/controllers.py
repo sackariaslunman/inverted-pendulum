@@ -38,8 +38,8 @@ class LQR(FSFB):
         K_r_d = np.nan_to_num(K_r_d)
         self.K_r_d = K_r_d.T
 
-    def feedback_d(self, state, r):
-        u_d = self.K_r_d @ r - self.K_d @ state
+    def feedback_d(self, state: np.ndarray, r: np.ndarray) -> np.ndarray:
+        u_d = r @ self.K_r_d.T - state @ self.K_d.T
         return u_d
 
 class Kalman:

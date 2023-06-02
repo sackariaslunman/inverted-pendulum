@@ -2,8 +2,8 @@ from __future__ import annotations
 import numpy as np
 from numpy import sin, cos, pi
 from numpy.random import multivariate_normal
-from lib.colors import color
-from lib.numerical import fe_step, rk4_step
+from .colors import color
+from .numerical import fe_step, rk4_step
 from scipy.signal import cont2discrete
 
 class CartPoleSystem:
