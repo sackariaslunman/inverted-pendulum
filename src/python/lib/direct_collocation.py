@@ -1,21 +1,21 @@
 import numpy as np
 from scipy.optimize import minimize
 from scipy.interpolate import CubicSpline
+from typing import Callable
 from time import perf_counter
 
 class DirectCollocation():
-    def __init__(self, N: int, dynamics, N_states: int, N_controls: int, state_lower_bound, state_upper_bound, control_lower_bound, control_upper_bound, tolerance=1e-6):
+    def __init__(self, N: int, dynamics: Callable[[np.ndarray,np.ndarray],np.ndarray], N_states: int, N_controls: int, constraints: Callable[[np.ndarray,np.ndarray],np.ndarray], calculate_boundary_error: Callable[[np.ndarray,np.ndarray],np.ndarray], tolerance=1e-6):
         self.N = N
         self.dynamics = dynamics
+        self.vectorized_dynamics = np.vectorize(dynamics, signature='(n),(m)->(n)')
+        self.calculate_boundary_error = calculate_boundary_error
         self.N_states = N_states
         self.N_controls = N_controls
 
-        self.state_lower_bound = state_lower_bound.T[0]
-        self.state_upper_bound = state_upper_bound.T[0]
-        self.control_lower_bound = control_lower_bound.T[0]
-        self.control_upper_bound = control_upper_bound.T[0]
+        self.vectorized_constraints = np.vectorize(constraints, signature='(n),(m)->(l)')
         self.tolerance = tolerance
-        
+
         self.times = {
             "variables": [],
             "objective": [],
@@ -23,88 +23,74 @@ class DirectCollocation():
             "ineq_constraints": [],
         }
 
-    def make_guess(self, initial_state, final_state):
-        self.initial_state = initial_state.T[0]
-        self.final_state = final_state.T[0]
+    def make_guess(self, initial_state, final_state, state_guess: np.ndarray, control_guess: np.ndarray):
+        self.initial_state = initial_state
+        self.final_state = final_state
 
-        self.initial_variables = np.hstack([
-            np.hstack([np.linspace(initial, final, self.N) for initial, final in zip(self.initial_state, self.final_state)]),
-            np.zeros(self.N_controls*self.N),
-        ])
+        if state_guess.size == 0 or control_guess.size == 0:
+            state_guess = np.linspace(initial_state, final_state, self.N).flatten()
+            control_guess = np.zeros((self.N, self.N_controls)).flatten()
+        self.initial_variables = np.hstack([state_guess, control_guess])
+
         return self.initial_variables
     
     def variables_to_state_control(self, variables):
         start_time = perf_counter()
-        state = variables[:self.N_states*self.N]
-        control = variables[self.N_states*self.N:(self.N_states+self.N_controls)*self.N]
+        states = variables[:self.N_states*self.N].reshape((self.N, self.N_states))
+        controls = variables[self.N_states*self.N:].reshape((self.N, self.N_controls))
         self.times["variables"].append(perf_counter()-start_time)
-        return state, control
+        return states, controls
 
     def objective_function(self, variables):
-        state, control = self.variables_to_state_control(variables)
+        _, controls = self.variables_to_state_control(variables)
         start_time = perf_counter()
-        result = 0
-        for i in range(self.N_controls):
-            for k in range(self.N-1):
-                result += (self.h/2)*(control[self.N*i+k]**2+control[self.N*i+k+1]**2)
+        cost = (controls[:-1]**2+controls[1:]**2).sum()*self.h/2
         self.times["objective"].append(perf_counter()-start_time)
-        return result
+        return cost
 
     def eq_constraints(self, variables):
-        state, control = self.variables_to_state_control(variables)
+        states, controls = self.variables_to_state_control(variables)
         start_time = perf_counter()
-        constraints = []
 
-        for k in range(self.N_states):
-            constraints.append(state[self.N*k]-self.initial_state[k])
-            constraints.append(state[self.N*k+self.N-1]-self.final_state[k])
+        constraints = np.zeros((2+self.N-1, self.N_states))
 
-        state_current = state[0::self.N]
-        control_current = control[0::self.N]
-        dynamics_current = self.dynamics(np.vstack(state_current), np.vstack(control_current)).T[0]
+        constraints[0] = self.calculate_boundary_error(states[0], self.initial_state)
+        constraints[1] = self.calculate_boundary_error(states[-1], self.final_state)
 
-        for k in range(self.N-1):
-            state_next = state[k+1::self.N]
-            control_next = control[k+1::self.N]
-            dynamics_next = self.dynamics(np.vstack(state_next), np.vstack(control_next)).T[0]
+        dynamics = self.vectorized_dynamics(states, controls)
 
-            dynamic_constraint = state_next-state_current-self.h/2*(dynamics_next+dynamics_current)
-            constraints.extend(list(dynamic_constraint))
+        next_states = states[1:]
+        current_states = states[:-1]
+        next_dynamics = dynamics[1:]
+        current_dynamics = dynamics[:-1]
 
-            state_current = state_next
-            control_current = control_next
-            dynamics_current = dynamics_next
+        dynamic_constraints = next_states-current_states-self.h/2*(next_dynamics+current_dynamics)
+        constraints[2:] = dynamic_constraints
         self.times["eq_constraints"].append(perf_counter()-start_time)
-        return constraints
+
+        return constraints.flatten()
 
     def ineq_constraints(self, variables):
-        state, control = self.variables_to_state_control(variables)
+        states, controls = self.variables_to_state_control(variables)
         start_time = perf_counter()
-        constraints = []
-
-        for k in range(self.N):
-            current_state = state[k::self.N]
-            current_control = control[k::self.N]
-
-            constraints.extend(list(np.array(current_state)-self.state_lower_bound))
-            constraints.extend(list(self.state_upper_bound-np.array(current_state)))
-            constraints.extend(list(np.array(current_control)-self.control_lower_bound))
-            constraints.extend(list(self.control_upper_bound-np.array(current_control)))
-
+        result = (self.vectorized_constraints(states, controls)).flatten()
         self.times["ineq_constraints"].append(perf_counter()-start_time)
-        return constraints
+        return result
 
-    def make_controller(self, time, initial_state, final_state, N_spline=None):
+    def make_controller(self, time, initial_state, final_state, N_spline=None, state_guess = np.array([]), control_guess = np.array([])):
         self.time = time
         self.N_spline = N_spline
         self.h = (self.time)/self.N
 
-        self.make_guess(initial_state, final_state)
+        self.initial_state = initial_state
+        self.final_state = final_state
+
+        self.make_guess(initial_state, final_state, state_guess, control_guess)
+
         constraints = [
             {"type": "eq", "fun": self.eq_constraints},
             {"type": "ineq", "fun": self.ineq_constraints},
         ]
-
         sol = minimize(
             fun=self.objective_function,
             x0=self.initial_variables,
@@ -112,20 +98,20 @@ class DirectCollocation():
             constraints=constraints,
             tol=self.tolerance
         )
-        state, control = self.variables_to_state_control(sol.x)
+        states, controls = self.variables_to_state_control(sol.x)
         N_time = np.linspace(0, time, self.N)
 
         if N_spline:
             N_spline_time = np.linspace(0, time, N_spline)
 
             state_spline = np.vstack([
-                CubicSpline(N_time, s_row)(N_spline_time) for s_row in state.reshape((self.N_states, self.N))
-            ])
+                CubicSpline(N_time, s_row)(N_spline_time) for s_row in states.T
+            ]).T
             control_spline = np.vstack([
-                np.interp(N_spline_time, N_time, c_row) for c_row in control.reshape((self.N_controls, self.N))
-            ])
+                np.interp(N_spline_time, N_time, c_row) for c_row in controls.T
+            ]).T
         else:
-            state_spline, control_spline = np.vstack(state), np.vstack(control)
+            state_spline, control_spline = states, controls
 
         keys = list(self.times.keys())
         for key in keys:
