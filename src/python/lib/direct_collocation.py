@@ -16,13 +16,6 @@ class DirectCollocation():
         self.vectorized_constraints = np.vectorize(constraints, signature='(n),(m)->(l)')
         self.tolerance = tolerance
 
-        self.times = {
-            "variables": [],
-            "objective": [],
-            "eq_constraints": [],
-            "ineq_constraints": [],
-        }
-
     def make_guess(self, initial_state, final_state, state_guess: np.ndarray, control_guess: np.ndarray):
         self.initial_state = initial_state
         self.final_state = final_state
@@ -38,14 +31,12 @@ class DirectCollocation():
         start_time = perf_counter()
         states = variables[:self.N_states*self.N].reshape((self.N, self.N_states))
         controls = variables[self.N_states*self.N:].reshape((self.N, self.N_controls))
-        self.times["variables"].append(perf_counter()-start_time)
         return states, controls
 
     def objective_function(self, variables):
         _, controls = self.variables_to_state_control(variables)
         start_time = perf_counter()
         cost = (controls[:-1]**2+controls[1:]**2).sum()*self.h/2
-        self.times["objective"].append(perf_counter()-start_time)
         return cost
 
     def eq_constraints(self, variables):
@@ -66,7 +57,6 @@ class DirectCollocation():
 
         dynamic_constraints = next_states-current_states-self.h/2*(next_dynamics+current_dynamics)
         constraints[2:] = dynamic_constraints
-        self.times["eq_constraints"].append(perf_counter()-start_time)
 
         return constraints.flatten()
 
@@ -74,7 +64,6 @@ class DirectCollocation():
         states, controls = self.variables_to_state_control(variables)
         start_time = perf_counter()
         result = (self.vectorized_constraints(states, controls)).flatten()
-        self.times["ineq_constraints"].append(perf_counter()-start_time)
         return result
 
     def make_controller(self, time, initial_state, final_state, N_spline=None, state_guess = np.array([]), control_guess = np.array([])):
@@ -94,7 +83,7 @@ class DirectCollocation():
         sol = minimize(
             fun=self.objective_function,
             x0=self.initial_variables,
-            # method="SLSQP",
+            method="SLSQP",
             constraints=constraints,
             tol=self.tolerance
         )
@@ -112,13 +101,5 @@ class DirectCollocation():
             ]).T
         else:
             state_spline, control_spline = states, controls
-
-        keys = list(self.times.keys())
-        for key in keys:
-            self.times[f"{key}_mean"] = np.mean(self.times[key])
-            self.times[f"{key}_total"] = sum(self.times[key])
-            self.times[key] = len(self.times[key])
-
-        print(self.times)
 
         return state_spline, control_spline

@@ -7,12 +7,12 @@ from random import uniform
 from gym import spaces, Env
 import pygame
 from time import perf_counter
-from .cartpolesystem import CartPoleSystem
+from .cartpolesystem import CartPoleDCMotorSystem, CartPoleStepperMotorSystem
 
 class CartPoleEnv(Env):
   def __init__(
     self, 
-    system: CartPoleSystem, 
+    system: CartPoleDCMotorSystem | CartPoleStepperMotorSystem, 
     dt: float,
     N: int,
     integration_method: Callable[[float, Callable[[np.ndarray, np.ndarray], np.ndarray], np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]
@@ -148,7 +148,7 @@ class CartPoleEnv(Env):
     thetas = state[2::2]
     d_thetas = state[3::2]
 
-    x0 = self.si_to_pixels(state[0]) + self.width//2
+    x0 = self.si_to_pixels(x) + self.width//2
     y0 = self.height//2
     pygame.draw.rect(self.screen, Colors.red, (x0, y0, 20, 10))
 

@@ -1,0 +1,8 @@
+sympy
+scipy
+scikit-learn
+matplotlib
+numpy
+gym
+pygame
+gekko
