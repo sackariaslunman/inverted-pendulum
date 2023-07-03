@@ -2,7 +2,6 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.interpolate import CubicSpline
 from typing import Callable
-from time import perf_counter
 
 class DirectCollocation():
     def __init__(self, N: int, dynamics: Callable[[np.ndarray,np.ndarray],np.ndarray], N_states: int, N_controls: int, constraints: Callable[[np.ndarray,np.ndarray],np.ndarray], calculate_boundary_error: Callable[[np.ndarray,np.ndarray],np.ndarray], tolerance=1e-6):
@@ -28,20 +27,17 @@ class DirectCollocation():
         return self.initial_variables
     
     def variables_to_state_control(self, variables):
-        start_time = perf_counter()
         states = variables[:self.N_states*self.N].reshape((self.N, self.N_states))
         controls = variables[self.N_states*self.N:].reshape((self.N, self.N_controls))
         return states, controls
 
     def objective_function(self, variables):
-        _, controls = self.variables_to_state_control(variables)
-        start_time = perf_counter()
+        states, controls = self.variables_to_state_control(variables)
         cost = (controls[:-1]**2+controls[1:]**2).sum()*self.h/2
         return cost
 
     def eq_constraints(self, variables):
         states, controls = self.variables_to_state_control(variables)
-        start_time = perf_counter()
 
         constraints = np.zeros((2+self.N-1, self.N_states))
 
@@ -62,7 +58,6 @@ class DirectCollocation():
 
     def ineq_constraints(self, variables):
         states, controls = self.variables_to_state_control(variables)
-        start_time = perf_counter()
         result = (self.vectorized_constraints(states, controls)).flatten()
         return result
 

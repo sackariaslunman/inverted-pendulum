@@ -1,5 +1,5 @@
-from scipy.signal import cont2discrete
 import numpy as np
+from scipy.signal import cont2discrete
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 
 class FSFB:
@@ -13,13 +13,6 @@ class FSFB:
         return A_d, B_d
 
 class LQR(FSFB):
-    def error_augment(self, A: np.ndarray, B: np.ndarray, C: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        AC = np.concatenate((A, -C))
-        ZZ = np.concatenate((np.zeros(C.T.shape), np.zeros((C.shape[0], C.shape[0])))) #type: ignore
-        A_aug = np.concatenate((AC, ZZ), axis=1)
-        B_aug = np.concatenate((B, np.zeros((C.shape[0],B.shape[1]))))
-        return A_aug, B_aug
-
     def calculate_K(self, A: np.ndarray, B: np.ndarray, Q: np.ndarray, R: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         P = solve_continuous_are(A, B, Q, R)
         K = np.linalg.inv(R) @ B.T @ P
@@ -45,11 +38,6 @@ class LQR(FSFB):
         
         return P_ds, K_ds
 
-
     def feedback(self, K: np.ndarray, error: np.ndarray) -> np.ndarray:
         u = error @ K.T 
         return u
-
-class Kalman:
-    def __init__(self):
-        pass

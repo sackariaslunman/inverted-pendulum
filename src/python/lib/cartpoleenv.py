@@ -13,16 +13,16 @@ class CartPoleEnv(Env):
   def __init__(
     self, 
     system: CartPoleDCMotorSystem | CartPoleStepperMotorSystem, 
-    dt: float,
+    dt_sim: float,
     N: int,
     integration_method: Callable[[float, Callable[[np.ndarray, np.ndarray], np.ndarray], np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]
   ):
     super(CartPoleEnv, self).__init__()
     self.system = system
     self.max_height = system.L
-    self.dt = dt
+    self.dt_sim = dt_sim
     self.N = N
-    self.max_time = dt*N
+    self.max_time = dt_sim*N
     self.g = system.g
     
     self.counter_down = 0
@@ -60,6 +60,7 @@ class CartPoleEnv(Env):
 
     self.states = np.zeros((self.N, self.system.num_states))
     self.controls = np.zeros((self.N, self.system.num_controls))
+    self.constraint_states = np.zeros((self.N, self.system.num_constraint_states))
     self.iterations = 0
 
     if initial_state is None:
@@ -81,8 +82,9 @@ class CartPoleEnv(Env):
     last_state = self.get_state()
     _, clipped_action = self.system.clip(last_state, action)
     
-    raw_state, d_state = self.integration_method(self.dt, self.system.differentiate, last_state, clipped_action)
+    raw_state, d_state = self.integration_method(self.dt_sim, self.system.differentiate, last_state, clipped_action)
     state, _ = self.system.clip(raw_state, clipped_action)
+    constraint_state = self.system.constraint_states(state, action)
 
     x = state[0]
     y = self.system.end_height(state)
@@ -94,11 +96,11 @@ class CartPoleEnv(Env):
     )
 
     won = bool(
-      self.counter_up > int(5/self.dt) # has been up for more than 5 seconds
+      self.counter_up > int(5/self.dt_sim) # has been up for more than 5 seconds
     )
 
     done = bool(
-      self.counter_down > int(5/self.dt) # has been down for more than 5 seconds
+      self.counter_down > int(5/self.dt_sim) # has been down for more than 5 seconds
     )
 
     if y > self.max_height * 0.9 and all([abs(d_theta) < 1 for d_theta in d_thetas]):
@@ -119,6 +121,7 @@ class CartPoleEnv(Env):
 
     self.states[self.iterations] = state
     self.controls[self.iterations] = clipped_action
+    self.constraint_states[self.iterations] = constraint_state
     self.iterations += 1
     
     return state, reward, done, {"won": won, "lost": lost}, False
@@ -150,12 +153,17 @@ class CartPoleEnv(Env):
 
     x0 = self.si_to_pixels(x) + self.width//2
     y0 = self.height//2
-    pygame.draw.rect(self.screen, Colors.red, (x0, y0, 20, 10))
 
     max_x = self.width//2 + self.si_to_pixels(self.system.state_upper_bound[0])
     min_x = self.width//2 + self.si_to_pixels(self.system.state_lower_bound[0])
+
+    # Track
+    pygame.draw.rect(self.screen, Colors.black, (min_x, y0+4, max_x+20-(min_x-10), 2))
+    # End stops
     pygame.draw.rect(self.screen, Colors.red, (min_x-10, y0, 10, 10))
     pygame.draw.rect(self.screen, Colors.red, (max_x+20, y0, 10, 10))
+    # Cart
+    pygame.draw.rect(self.screen, Colors.red, (x0, y0, 20, 10))
 
     motor_x0 = min_x-100
     theta_m = x/self.system.motor.r
@@ -180,7 +188,7 @@ class CartPoleEnv(Env):
       y0 = y1
   
     texts = [
-      f"Time: {round(self.i*self.dt,2)} s",
+      f"Time: {round(self.i*self.dt_sim,2)} s",
       "",
       "Cart:",
       f"Position: {round(state[0],2)} m",
