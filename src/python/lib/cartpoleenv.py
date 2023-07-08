@@ -142,7 +142,8 @@ class CartPoleEnv(Env):
       if event.type == pygame.QUIT: 
         self.close()
 
-    self.screen.fill(Colors.gray)
+    background_color = Colors.light_gray
+    self.screen.fill(background_color)
 
     if state.size == 0:
       state = self.get_state()
@@ -207,7 +208,7 @@ class CartPoleEnv(Env):
     texts.extend(optional_text)
     
     for k, text_k in enumerate(texts):
-      text = self.font.render(text_k, True, Colors.black, Colors.gray)
+      text = self.font.render(text_k, True, Colors.black, background_color)
       text_rect = text.get_rect()
       self.screen.blit(text,(0,20*k,text_rect.width,text_rect.height))
 

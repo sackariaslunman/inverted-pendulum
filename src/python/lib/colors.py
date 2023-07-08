@@ -12,3 +12,6 @@ class Colors(Dict):
     black = (0,0,0)
     white = (255,255,255)
     gray = (100,100,100)
+    cream = (255,253,208)
+    dark_gray = (41,41,41)
+    light_gray = (200,200,200)
