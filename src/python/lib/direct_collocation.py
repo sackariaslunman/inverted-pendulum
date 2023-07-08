@@ -277,5 +277,5 @@ class CartPoleStepperMotorDirectCollocation():
         J_eval = ca.substitute(self.J, self.vars, vals)
         J_eval_np = np.array(ca.DM(J_eval))
         A = np.array(J_eval_np[:,:-1]).astype(np.float64)
-        B = np.vstack(np.array(J_eval_np[:,-1]).astype(np.float64)) #type. ignore
+        B = np.vstack(np.array(J_eval_np[:,-1]).astype(np.float64)) # type: ignore
         return A, B
