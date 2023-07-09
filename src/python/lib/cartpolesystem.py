@@ -231,7 +231,12 @@ class CartPoleStepperMotorSystem:
         c_state = self.constraint_states(state, control)
         torque = c_state[0]
         
-        constraints = np.array([s-(self.state_lower_bound[0]+self.state_margin[0]), self.state_upper_bound[0]-self.state_margin[0]-s, d_s-(self.state_lower_bound[1]+self.state_margin[1]), self.state_upper_bound[1]-self.state_margin[1]-d_s, torque-self.motor.torque_bounds[0], self.motor.torque_bounds[1]-torque])
+        constraints = np.array([s-(self.state_lower_bound[0]+self.state_margin[0]), \
+            self.state_upper_bound[0]-self.state_margin[0]-s, \
+            d_s-(self.state_lower_bound[1]+self.state_margin[1]), \
+            self.state_upper_bound[1]-self.state_margin[1]-d_s, \
+            torque-self.motor.torque_bounds[0], \
+            self.motor.torque_bounds[1]-torque])
         return constraints
     
     def clip(self, state: np.ndarray, control: np.ndarray) -> tuple[np.ndarray,np.ndarray]:
@@ -293,7 +298,7 @@ class CartPoleStepperMotorSystem:
         F_evaluated = self.F.subs(operating_point)
         A = np.array(F_evaluated[:,:-1]).astype(np.float64)
         B = np.array(F_evaluated[:,-1]).astype(np.float64)
-        return A, B
+        return A, B 
     
     def differentiate(self, state: np.ndarray, control: np.ndarray) -> np.ndarray:
         d_s = state[1]

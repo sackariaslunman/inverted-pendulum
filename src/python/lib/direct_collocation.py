@@ -102,17 +102,12 @@ class DirectCollocation():
         return state_spline, control_spline
 
 class CartPoleStepperMotorDirectCollocation():
-    def __init__(self, N: int, N_collocation: int, end_time: float, system: CartPoleStepperMotorSystem, tolerance=1e-6):
+    def __init__(self, N: int, N_collocation: int, system: CartPoleStepperMotorSystem, tolerance=1e-6):
         self.N = N
         self.N_collocation = N_collocation
         self.N_states = system.num_states
         self.N_controls = system.num_controls
         self.tolerance = tolerance
-        self.opti = ca.Opti()   
-        self.xs = self.opti.variable(N_collocation,system.num_states)
-        self.us = self.opti.variable(N_collocation,system.num_controls)
-        self.h = end_time/N_collocation
-        self.end_time = end_time
         self.system = system
         self.calculate_jacobian()
 
@@ -176,7 +171,7 @@ class CartPoleStepperMotorDirectCollocation():
     def set_objective_function(self):
         obj = 0
         for i in range(self.N_collocation-1):
-            obj += (self.us[i,0]**2+self.us[i+1,0]**2+self.xs[i,1]**2+self.xs[i+1,1]**2)*self.h/2
+            obj += (self.us[i,0]**2+self.us[i+1,0]**2)*self.h/2
         self.opti.minimize(obj)
 
     def set_eq_constraints(self):
@@ -193,7 +188,7 @@ class CartPoleStepperMotorDirectCollocation():
                 self.opti.subject_to(self.xs[0,i+2] == self.x0[i+2])
                 self.opti.subject_to(self.xs[-1,i+2] == self.r[i+2])
 
-    def ineq_constraints(self):
+    def set_ineq_constraints(self):
         for i in range(self.N_collocation):
             s = self.xs[i,0]
             last_s = self.xs[i-1,0]
@@ -228,14 +223,20 @@ class CartPoleStepperMotorDirectCollocation():
             torque = f*self.system.motor.r
             self.opti.subject_to(self.opti.bounded(self.system.motor.torque_bounds[0]*(1-self.system.motor.torque_margin),torque,self.system.motor.torque_bounds[1]*(1-self.system.motor.torque_margin))) #type: ignore
 
-    def make_controller(self, x0, r, x_guess = np.array([]), u_guess = np.array([])):
+    def make_solver(self, end_time: float, x0, r, x_guess = np.array([]), u_guess = np.array([])):
+        self.opti = ca.Opti()   
+        self.xs = self.opti.variable(self.N_collocation,self.system.num_states)
+        self.us = self.opti.variable(self.N_collocation,self.system.num_controls)
+        self.h = end_time/self.N_collocation
+        self.end_time = end_time
+    
         self.x0 = x0
         self.r = r
 
         self.make_guess(x0, r, x_guess, u_guess)
         self.set_objective_function()
         self.set_eq_constraints()
-        self.ineq_constraints()
+        self.set_ineq_constraints()
 
         self.opti.solver("ipopt")
         sol = self.opti.solve()

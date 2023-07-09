@@ -8,21 +8,19 @@ from gym import spaces, Env
 import pygame
 from time import perf_counter
 from .cartpolesystem import CartPoleDCMotorSystem, CartPoleStepperMotorSystem
+from typing import Optional
 
 class CartPoleEnv(Env):
   def __init__(
     self, 
     system: CartPoleDCMotorSystem | CartPoleStepperMotorSystem, 
     dt_sim: float,
-    N: int,
-    integration_method: Callable[[float, Callable[[np.ndarray, np.ndarray], np.ndarray], np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]
+    integration_method: Callable[[float, Callable[[np.ndarray, np.ndarray], np.ndarray], np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]],
   ):
     super(CartPoleEnv, self).__init__()
     self.system = system
     self.max_height = system.L
     self.dt_sim = dt_sim
-    self.N = N
-    self.max_time = dt_sim*N
     self.g = system.g
     
     self.counter_down = 0
@@ -58,9 +56,9 @@ class CartPoleEnv(Env):
   def reset(self, initial_state: np.ndarray | None = None) -> tuple[np.ndarray, dict]:
     self.close()
 
-    self.states = np.zeros((self.N, self.system.num_states))
-    self.controls = np.zeros((self.N, self.system.num_controls))
-    self.constraint_states = np.zeros((self.N, self.system.num_constraint_states))
+    self.states = []
+    self.controls = []
+    self.constraint_states = []
     self.iterations = 0
 
     if initial_state is None:
@@ -72,7 +70,9 @@ class CartPoleEnv(Env):
       for i in range(self.system.num_poles):
         initial_state[2+i*2] = radians(uniform(-50, 50))
 
-    self.states[0] = initial_state
+    self.states.append(initial_state)
+    self.controls.append(np.zeros(self.system.num_controls))
+    self.constraint_states.append(self.system.constraint_states(initial_state, np.zeros(self.system.num_controls)))
     self.iterations += 1
 
     return self.get_state(), {"Msg": "Reset env"}
@@ -119,9 +119,9 @@ class CartPoleEnv(Env):
 
     done = won or lost or done
 
-    self.states[self.iterations] = state
-    self.controls[self.iterations] = clipped_action
-    self.constraint_states[self.iterations] = constraint_state
+    self.states.append(state)
+    self.controls.append(clipped_action)
+    self.constraint_states.append(constraint_state)
     self.iterations += 1
     
     return state, reward, done, {"won": won, "lost": lost}, False
@@ -180,11 +180,11 @@ class CartPoleEnv(Env):
 
     x0 += 10
     pole_colors = [Colors.green, Colors.blue, Colors.purple, Colors.yellow]
-    for pole, theta, color in zip(self.system.poles, thetas, pole_colors[:self.system.num_poles]): #type: ignore
+    for i, (pole, theta, color) in enumerate(zip(self.system.poles, thetas, pole_colors[:self.system.num_poles])): #type: ignore
       l = pole.l
       x1 = x0 + self.si_to_pixels(l * sin(theta))
       y1 = y0 + self.si_to_pixels(-l * cos(theta))
-      pygame.draw.line(self.screen, color, (x0, y0), (x1, y1), 10)
+      pygame.draw.line(self.screen, color, (x0+i, y0), (x1+i, y1), 10)
       x0 = x1
       y0 = y1
   

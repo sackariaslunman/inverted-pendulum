@@ -5,4 +5,5 @@ matplotlib
 numpy
 gym
 pygame
-gekko
+casadi
+pyqt6
