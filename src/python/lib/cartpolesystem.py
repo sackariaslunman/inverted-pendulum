@@ -19,6 +19,9 @@ class Cart:
         x_margin_clipped = np.clip(x_bound_margin, 0, 0.5)
         self.x_margin = x_margin_clipped
 
+    def copy(self) -> Cart:
+        return Cart(self.m, self.u_c, self.x_bounds, self.x_margin)
+
 class Pole:
     def __init__(
         self, 
@@ -29,6 +32,9 @@ class Pole:
         self.m = mass
         self.l = length
         self.u_p = joint_friction
+
+    def copy(self) -> Pole:
+        return Pole(self.m, self.l, self.u_p)
 
 class CartPoleDCMotorSystem:
     def __init__(
@@ -314,3 +320,6 @@ class CartPoleStepperMotorSystem:
         A, B = self.linearize(state0, control0)
         d_state = state @ A.T + control @ B.T
         return d_state.T
+    
+    def copy(self):
+        return CartPoleStepperMotorSystem(self.cart.copy(), self.motor.copy(), [pole.copy() for pole in self.poles], self.g)

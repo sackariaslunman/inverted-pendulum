@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 class DCMotor:
     def __init__(
         self, 
@@ -37,3 +39,12 @@ class StepperMotor:
         self.v_margin = velocity_margin
         self.torque_bounds = torque_bounds
         self.torque_margin = torque_margin
+
+    def copy(self) -> StepperMotor:
+        return StepperMotor(
+            self.r,
+            self.v_bounds,
+            self.v_margin,
+            self.torque_bounds,
+            self.torque_margin
+        )
