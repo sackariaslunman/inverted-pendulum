@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "serial-communication",
+			"path": "src/embedded/serial-communication"
+		}
+	],
+	"settings": {}
+}
