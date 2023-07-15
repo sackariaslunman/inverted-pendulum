@@ -38,6 +38,10 @@ class CartPoleSimulator(ABC):
     def send_trajectory(self, states: np.ndarray, controls: np.ndarray, K_ds: np.ndarray) -> None:
         ...
 
+    @abstractmethod
+    def send_reference(self, state: np.ndarray) -> None:
+        ...
+
     @property
     @abstractmethod
     def state(self) -> np.ndarray:
@@ -123,6 +127,10 @@ class CartPoleEnvSimulator(CartPoleSimulator):
         self._trajectory_count = 0
         self._target_state = states[-1]
         self._target_K = K_ds[-1]
+        self._control_enabled = True
+
+    def send_reference(self, state: np.ndarray) -> None:
+        self._target_state = state
         self._control_enabled = True
 
     def run(self):
