@@ -1,9 +1,12 @@
+# import multiprocessing as mp
 from lib.cartpolecontroller import CartPoleController
 from lib.cartpolesimulator import CartPoleEnvSimulator, CartPoleSerialSimulator
 from lib.cartpolesystem import CartPoleStepperMotorSystem, Pole, Cart
 from lib.motors import StepperMotor
 
 def main():
+    # mp.set_start_method('spawn')
+    
     dt = 0.01
     g = 9.81
 
