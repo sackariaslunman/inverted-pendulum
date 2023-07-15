@@ -7,3 +7,4 @@ gym
 pygame
 casadi
 pyqt6
+pyserial
