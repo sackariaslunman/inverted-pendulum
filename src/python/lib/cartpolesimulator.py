@@ -1,4 +1,4 @@
-import time
+from time import perf_counter
 import numpy as np
 from numpy import radians
 from abc import ABC, abstractmethod
@@ -156,6 +156,7 @@ class CartPoleEnvSimulator(CartPoleSimulator):
 
         self._running = True
         self.step = 0
+        last_update = perf_counter()
 
         while self._running: 
             state = self._env.get_state()
@@ -170,4 +171,7 @@ class CartPoleEnvSimulator(CartPoleSimulator):
 
             if self.step >= self._N_max:
                 self._running = False
-            time.sleep(self._dt)
+            while perf_counter() - last_update < self._dt:
+                pass
+
+            last_update = (perf_counter() // self._dt) * self._dt

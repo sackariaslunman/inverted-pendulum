@@ -16,7 +16,7 @@ def main():
     m = 0.2167
     
     cart = Cart(m, 0.01, (-x_max, x_max), 0.1)
-    motor = StepperMotor(r, (-5, 5), 0.2, (-3, 3), 0.1)
+    motor = StepperMotor(r, (-2.5, 2.5), 0.2, (-2.5, 2.5), 0.1)
     poles = [Pole(m1, l1, 0.001)]
     system = CartPoleStepperMotorSystem(cart, motor, poles, g)
     sim = CartPoleEnvSimulator(dt, system)
