@@ -49,6 +49,8 @@ class CartPoleSimulator(ABC):
 class CartPoleSerialSimulator(CartPoleSimulator):
     def __init__(self, dt: float, system: CartPoleStepperMotorSystem, get_control: Callable[[np.ndarray],np.ndarray] | None = None):
         super().__init__(dt, system, get_control)
+        env = CartPoleEnv(system, dt, rk4_step)
+        self._env = env
         self._running = False
         self._render_enabled = True
         self._run_process = Thread(target=self.run_loop)
@@ -90,7 +92,6 @@ class CartPoleSerialSimulator(CartPoleSimulator):
         if self.get_control is None:
             raise ValueError("get_control is None")
 
-        counter = 0
         with Serial(self._port, self._baudrate, timeout=self._timeout) as ser:
             while ser.is_open:
                 if ser.in_waiting == 0:
@@ -100,12 +101,12 @@ class CartPoleSerialSimulator(CartPoleSimulator):
                 state_bytes = ser.read(self._state.nbytes)
                 self._state = np.frombuffer(state_bytes, dtype=self._state.dtype)
 
-                if counter % 100 == 0:
-                    print(f"{counter/100} State: {self.state}")
-                counter += 1
-
                 self._control = self.get_control(self._state)
                 ser.write(self._control.tobytes())
+                self._env.step(self._control, self._state)
+
+                if self._render_enabled:
+                    self._env.render()
 
 class CartPoleEnvSimulator(CartPoleSimulator):
     def __init__(self, dt: float, system: CartPoleStepperMotorSystem, get_control: Callable[[np.ndarray],np.ndarray] | None = None, max_time: float = 60*10):
@@ -142,7 +143,6 @@ class CartPoleEnvSimulator(CartPoleSimulator):
     def run(self):
         self._running = True
         self._run_process.start()
-        self.run_loop()
 
     def stop(self):
         self._running = False

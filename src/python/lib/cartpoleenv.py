@@ -77,14 +77,20 @@ class CartPoleEnv(Env):
 
     return self.get_state(), {"Msg": "Reset env"}
 
-  def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, dict, bool]:
+  def step(self, action: np.ndarray, creative_mode_state: np.ndarray | None = None) -> tuple[np.ndarray, float, bool, dict, bool]:
     reward = 0
-    last_state = self.get_state()
-    _, clipped_action = self.system.clip(last_state, action)
-    
-    raw_state, d_state = self.integration_method(self.dt_sim, self.system.differentiate, last_state, clipped_action)
-    state, _ = self.system.clip(raw_state, clipped_action)
-    constraint_state = self.system.constraint_states(state, action)
+
+    if creative_mode_state is None:
+      last_state = self.get_state()
+      _, clipped_action = self.system.clip(last_state, action)
+      
+      raw_state, d_state = self.integration_method(self.dt_sim, self.system.differentiate, last_state, clipped_action)
+      state, _ = self.system.clip(raw_state, clipped_action)
+      constraint_state = self.system.constraint_states(state, action)
+    else:
+      state = creative_mode_state
+      constraint_state = self.system.constraint_states(state, action)
+      clipped_action = action
 
     x = state[0]
     y = self.system.end_height(state)

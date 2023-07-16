@@ -27,6 +27,8 @@ class CartPoleController:
         self._target_state = np.array([])
         self._target_K = np.array([])
 
+        self._last_pole_pos = [False for _ in range(self._system.num_poles)]
+
     @property
     def dt(self) -> float:
         return self._dt
@@ -45,6 +47,7 @@ class CartPoleController:
         dt_collocation = 0.03
         N_collocation = int(end_time/dt_collocation)+1
 
+        self._last_pole_pos = pole_pos
         pole_states = np.array([[float(0 if pos else radians(180)), 0.0] for pos in pole_pos]).flatten()
         target_state = np.array([pos, 0] + pole_states.tolist())
 
@@ -76,6 +79,16 @@ class CartPoleController:
         self._is_in_trajectory = False
         self._trajectory_calculating = False
 
+    def create_reference(self, pos: float):
+        if self._trajectory_calculating or not self._is_running or self._is_in_trajectory or not self._simulator.running:
+            return
+        
+        pole_pos = self._last_pole_pos
+        pole_states = np.array([[float(0 if pos else radians(180)), 0.0] for pos in pole_pos]).flatten()
+        target_state = np.array([pos, 0] + pole_states.tolist())
+
+        self._target_state = target_state
+
     def calculate_control(self, state: np.ndarray):
         control = np.zeros(self._system.num_controls)
         if self._control_enabled:
@@ -91,7 +104,7 @@ class CartPoleController:
                 control = LQR.feedback(self._target_K, error)
                 self._is_in_trajectory = False
         return control
-
+    
     def run(self):
         if self._is_running:
             return
@@ -105,6 +118,17 @@ class CartPoleController:
                 self.stop()
             elif command == 'c':
                 self.disable_control()
+            elif command == "r":
+                try:
+                    pos = float(input('Enter target position (-0.5 to 0.5): '))
+                    if pos > 0.5:
+                        pos = 0.5
+                    elif pos < -0.5:
+                        pos = -0.5
+                    trajectory_process = Thread(target=self.create_reference, args=(pos,))
+                    trajectory_process.start()
+                except ValueError:
+                    print('Value error: Failed to parse value to number')
             elif command == 't':
                 try:
                     pos = float(input('Enter target position (-0.5 to 0.5): '))
