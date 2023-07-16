@@ -6,4 +6,3 @@ numpy
 gym
 pygame
 casadi
-pyqt6
