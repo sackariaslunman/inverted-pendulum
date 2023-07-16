@@ -114,8 +114,6 @@ class CartPoleController:
                 elif pos < -0.5:
                     pos = -0.5
                 self.create_reference(pos)
-                # except ValueError:
-                #     print('Value error: Failed to parse value to number')
             elif command == 't':
                 try:
                     pos = float(input('Enter target position (-0.5 to 0.5): '))
