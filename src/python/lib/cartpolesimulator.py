@@ -160,6 +160,7 @@ class CartPoleEnvSimulator(CartPoleSimulator):
 
         while self._running: 
             state = self._env.get_state()
+            print(state)
             self.step += 1
             if self.get_control is None:
                 raise ValueError("No control function provided")
