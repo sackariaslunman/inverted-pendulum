@@ -7,7 +7,6 @@ from serial import Serial
 from threading import Thread
 from .cartpoleenv import CartPoleEnv
 from .cartpolesystem import CartPoleStepperMotorSystem
-from .regulators import LQR
 from .numerical import rk4_step
 
 class CartPoleSimulator(ABC):
@@ -160,7 +159,6 @@ class CartPoleEnvSimulator(CartPoleSimulator):
 
         while self._running: 
             state = self._env.get_state()
-            print(state)
             self.step += 1
             if self.get_control is None:
                 raise ValueError("No control function provided")

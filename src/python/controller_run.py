@@ -3,6 +3,7 @@ from lib.cartpolecontroller import CartPoleController
 from lib.cartpolesimulator import CartPoleEnvSimulator, CartPoleSerialSimulator
 from lib.cartpolesystem import CartPoleStepperMotorSystem, Pole, Cart
 from lib.motors import StepperMotor
+from serial.tools.list_ports import comports
 
 def main():
     # mp.set_start_method('spawn')
@@ -28,7 +29,18 @@ def main():
     else:
         sim = CartPoleSerialSimulator(dt, system)
         controller = CartPoleController(sim, dt)
-        port = input("Port: ")
+        # open ports
+        print("Available ports: ")
+        ports = [port.name for port in comports()]
+        if len(ports) == 0:
+            raise ValueError("No ports available")
+
+        for port in ports:
+            print(port)
+
+        port = input(f"Port ({ports[0]}): ")
+        if port == "":
+            port = ports[0]
         sim.run(port, 500000)
         controller.run()
 
