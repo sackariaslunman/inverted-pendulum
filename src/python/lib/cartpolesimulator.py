@@ -52,8 +52,8 @@ class CartPoleSerialSimulator(CartPoleSimulator):
         self._running = False
         self._render_enabled = True
         self._run_process = Thread(target=self.run_loop)
-        self._state = np.zeros(system.num_states, dtype=np.float64)
-        self._control = np.zeros(system.num_controls, dtype=np.float64)
+        self._state = np.zeros(system.num_states, dtype=np.float32)
+        self._control = np.zeros(system.num_controls, dtype=np.float32)
 
     @property
     def dt(self):
@@ -92,21 +92,17 @@ class CartPoleSerialSimulator(CartPoleSimulator):
 
         counter = 0
         with Serial(self._port, self._baudrate, timeout=self._timeout) as ser:
-            ser.reset_output_buffer()
             while ser.is_open:
                 if ser.in_waiting == 0:
                     continue
+
+                ser.read_until(b"xst")
                 state_bytes = ser.read(self._state.nbytes)
                 self._state = np.frombuffer(state_bytes, dtype=self._state.dtype)
-                ser.reset_input_buffer()
 
                 if counter % 100 == 0:
-                    print(f"{counter} State: {self.state}")
+                    print(f"{counter/100} State: {self.state}")
                 counter += 1
-
-                if ser.in_waiting > 0:
-                    ser.reset_input_buffer()
-                    continue
 
                 self._control = self.get_control(self._state)
                 ser.write(self._control.tobytes())

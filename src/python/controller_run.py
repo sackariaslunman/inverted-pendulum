@@ -17,7 +17,7 @@ def main():
     sim = CartPoleSerialSimulator(dt, system)
     controller = CartPoleController(sim, dt)
 
-    sim.run("COM3", 115200)
+    sim.run("COM3", 500000)
     controller.run()
 
 if __name__ == '__main__':
