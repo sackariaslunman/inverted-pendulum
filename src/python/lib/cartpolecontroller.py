@@ -120,22 +120,22 @@ class CartPoleController:
                 self.disable_control()
             elif command == "r":
                 try:
-                    pos = float(input('Enter target position (-0.5 to 0.5): '))
-                    if pos > 0.5:
-                        pos = 0.5
-                    elif pos < -0.5:
-                        pos = -0.5
+                    pos = float(input('Enter target position (-0.4 to 0.4): '))
+                    if pos > 0.4:
+                        pos = 0.4
+                    elif pos < -0.4:
+                        pos = -0.4
                     trajectory_process = Thread(target=self.create_reference, args=(pos,))
                     trajectory_process.start()
                 except ValueError:
                     print('Value error: Failed to parse value to number')
             elif command == 't':
                 try:
-                    pos = float(input('Enter target position (-0.5 to 0.5): '))
-                    if pos > 0.5:
-                        pos = 0.5
-                    elif pos < -0.5:
-                        pos = -0.5
+                    pos = float(input('Enter target position (-0.4 to 0.4): '))
+                    if pos > 0.4:
+                        pos = 0.4
+                    elif pos < -0.4:
+                        pos = -0.4
                     pole_pos = [bool(int(input(f"Enter pole {i} position ('0' for down or '1' for up): "))) for i in range(self._system.num_poles)]
                     trajectory_process = Thread(target=self.create_trajectory, args=(pos, pole_pos))
                     trajectory_process.start()

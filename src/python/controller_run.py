@@ -9,15 +9,21 @@ def main():
     
     dt = 0.01
     g = 9.81
-
-    cart = Cart(0.1, 0.01, (-0.8, 0.8), 0.1)
-    motor = StepperMotor(0.06, (-5, 5), 0.2, (-2, 2), 0.1)
-    poles = [Pole(0.05, 0.15, 0.001), Pole(0.05, 0.2, 0.001)]
+    r = 0.04456
+    x_max = 1.15/2
+    l1 = 0.225
+    m1 = 0.0446
+    m = 0.2167
+    
+    cart = Cart(m, 0.01, (-x_max, x_max), 0.1)
+    motor = StepperMotor(r, (-5, 5), 0.2, (-3, 3), 0.1)
+    poles = [Pole(m1, l1, 0.001)]
     system = CartPoleStepperMotorSystem(cart, motor, poles, g)
-    sim = CartPoleSerialSimulator(dt, system)
+    sim = CartPoleEnvSimulator(dt, system)
     controller = CartPoleController(sim, dt)
 
-    sim.run("COM3", 500000)
+    # sim.run("COM3", 500000)
+    sim.run()
     controller.run()
 
 if __name__ == '__main__':
