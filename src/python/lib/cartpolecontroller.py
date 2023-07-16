@@ -5,7 +5,6 @@ from .cartpolesystem import CartPoleStepperMotorSystem
 from .cartpolesimulator import CartPoleSimulator
 from .direct_collocation import CartPoleStepperMotorDirectCollocation
 from .regulators import LQR
-import os
 
 class CartPoleController:
     def __init__(self, simulator: CartPoleSimulator, dt: float):
@@ -106,14 +105,6 @@ class CartPoleController:
                 self.stop()
             elif command == 'c':
                 self.disable_control()
-            elif command == "r":
-                # try:
-                pos = float(input('Enter target position (-0.5 to 0.5): '))
-                if pos > 0.5:
-                    pos = 0.5
-                elif pos < -0.5:
-                    pos = -0.5
-                self.create_reference(pos)
             elif command == 't':
                 try:
                     pos = float(input('Enter target position (-0.5 to 0.5): '))
