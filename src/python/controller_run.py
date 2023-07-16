@@ -19,12 +19,17 @@ def main():
     motor = StepperMotor(r, (-2.5, 2.5), 0.2, (-2.5, 2.5), 0.1)
     poles = [Pole(m1, l1, 0.001)]
     system = CartPoleStepperMotorSystem(cart, motor, poles, g)
-    sim = CartPoleEnvSimulator(dt, system)
-    controller = CartPoleController(sim, dt)
 
-    # sim.run("COM3", 500000)
-    sim.run()
-    controller.run()
+    if (input("Simulate (y/n)?") == "y"):
+        sim = CartPoleEnvSimulator(dt, system)
+        controller = CartPoleController(sim, dt)
+        sim.run()
+        controller.run()
+    else:
+        sim = CartPoleSerialSimulator(dt, system)
+        controller = CartPoleController(sim, dt)
+        sim.run("COM3", 500000)
+        controller.run()
 
 if __name__ == '__main__':
     main()
