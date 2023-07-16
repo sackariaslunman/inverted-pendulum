@@ -23,10 +23,8 @@ void loop() {
   Serial.write('s');
   Serial.write('t');
   Serial.write((uint8_t*)state, sizeof(state));
-  digitalWrite(LED, HIGH);
 
   while (!Serial.available()) {}
-  digitalWrite(LED, LOW);
 
   Serial.readBytes((char*)control, sizeof(control));
   state[0] = control[0];
