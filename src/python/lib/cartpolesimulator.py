@@ -8,6 +8,7 @@ from threading import Thread
 from .cartpoleenv import CartPoleEnv
 from .cartpolesystem import CartPoleStepperMotorSystem
 from .numerical import rk4_step
+import pandas as pd
 
 class CartPoleSimulator(ABC):
     def __init__(self, dt: float, system: CartPoleStepperMotorSystem, get_control: Callable[[np.ndarray], np.ndarray] | None = None):
@@ -45,6 +46,14 @@ class CartPoleSimulator(ABC):
     def render_enabled(self, value: bool) -> None:
         ...
 
+    @abstractmethod
+    def export(self) -> pd.DataFrame:
+        ...
+    
+    @abstractmethod
+    def stop(self) -> None:
+        ...
+
 class CartPoleSerialSimulator(CartPoleSimulator):
     def __init__(self, dt: float, system: CartPoleStepperMotorSystem, get_control: Callable[[np.ndarray],np.ndarray] | None = None):
         super().__init__(dt, system, get_control)
@@ -53,8 +62,8 @@ class CartPoleSerialSimulator(CartPoleSimulator):
         self._running = False
         self._render_enabled = True
         self._run_process = Thread(target=self.run_loop)
-        self._state = np.zeros(system.num_states, dtype=np.float32)
-        self._control = np.zeros(system.num_controls, dtype=np.float32)
+        self._state = np.zeros(system.num_states, dtype=np.float64)
+        self._control = np.zeros(system.num_controls, dtype=np.float64)
 
     @property
     def dt(self):
@@ -91,6 +100,7 @@ class CartPoleSerialSimulator(CartPoleSimulator):
         if self.get_control is None:
             raise ValueError("get_control is None")
 
+        last_update = perf_counter()
         with Serial(self._port, self._baudrate, timeout=self._timeout) as ser:
             while ser.is_open:
                 if ser.in_waiting == 0:
@@ -101,11 +111,17 @@ class CartPoleSerialSimulator(CartPoleSimulator):
                 self._state = np.frombuffer(state_bytes, dtype=self._state.dtype)
 
                 self._control = self.get_control(self._state)
+
                 ser.write(self._control.tobytes())
-                self._env.step(self._control, self._state)
+                dt = perf_counter() - last_update
+                self._env.step(self._control, self._state, dt)
+                last_update = perf_counter()
 
                 if self._render_enabled:
                     self._env.render()
+    
+    def export(self):
+        return self._env.export()
 
 class CartPoleEnvSimulator(CartPoleSimulator):
     def __init__(self, dt: float, system: CartPoleStepperMotorSystem, get_control: Callable[[np.ndarray],np.ndarray] | None = None, max_time: float = 60*10):
@@ -163,7 +179,7 @@ class CartPoleEnvSimulator(CartPoleSimulator):
             if self.get_control is None:
                 raise ValueError("No control function provided")
             control = self.get_control(state)
-                    
+
             self._env.step(control)
             if self._render_enabled:
                 self._env.render(state)
@@ -174,3 +190,6 @@ class CartPoleEnvSimulator(CartPoleSimulator):
                 pass
 
             last_update = (perf_counter() // self._dt) * self._dt
+
+    def export(self):
+        return self._env.export()
