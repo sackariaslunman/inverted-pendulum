@@ -30,10 +30,7 @@ unsigned long startMillis = 0;
 // Structure example to receive data
 // Must match the sender structure
 typedef struct struct_message {
-    // char a[32];
     uint16_t b;
-    // float c;
-    // bool d;
 } struct_message;
 
 // Create a struct_message called myData
@@ -44,29 +41,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   memcpy(&myData, incomingData, sizeof(myData));
   // Serial.print("Bytes received: ");
   // Serial.println(len);
-  // Serial.print("Char: ");
-  // Serial.println(myData.a);
-  // Serial.print("Int: ");
-  // Serial.print(myData.b); 
-  // Serial.print("\t");
-  // Serial.print(millis() - startMillis);
-  // Serial.print("Float: ");
-  // Serial.println(myData.c);
-  // Serial.print("Bool: ");
-  // Serial.println(myData.d);
-  // Serial.println();
-
-  // if (myData.b == 0) {
-  //   startTime = millis();
-  // }
-
-  // if (myData.b == 999) {
-  //   stopTime = millis();
-  //   Serial.print("Time between messages: ");
-  //   Serial.print(stopTime - startTime);
-  //   Serial.println(" ms");
-  // }
-  
+  // Serial.print("b: ");
+  // Serial.println(myData.b); 
 }
 
 
@@ -80,8 +56,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
 AccelStepper stepper(1, stepPin, dirPin);
 
-int maxSpeed = 1000;
-int accel = 1000;
+int maxSpeed = 10000;
+int accel = 50000;
 
 int targetPos = 0;
 int targetAngle = 2048;
@@ -89,26 +65,53 @@ bool stop = false;
 bool demo = false;
 bool p_reg = false;
 
-float p_reg_pos = 0.1;
-float i_reg_pos = 0.01;
+double p_reg_pos = 0.1;
+double i_reg_pos = 0.01;
 
-float error = 0;
-float error_sum = 0;
-float error_last = 0;
-
-
-#define minPos 0
-#define maxPos 40*100
-
-// Print string
-String printString = "";
+double error = 0;
+double error_sum = 0;
+double error_last = 0;
 
 
 
+#define steps_per_revolution 1000
+#define wheel_circumference 140*0.002 // m
+const double length_per_step = wheel_circumference / steps_per_revolution;
+
+#define encoded_steps_per_revolution 4096
+const double angle_per_step = 2*PI / encoded_steps_per_revolution; // rad
+
+#define rail_length 1.2 // m
+
+#define maxPos rail_length / length_per_step / 2 
+#define minPos -rail_length / length_per_step / 2 
+
+
+// serial-communication\src\main.cpp
+long last_update = 0;
+long last_loop = 0;
+int dt = 5000;
+
+// State  = pos (m), vel (m/s), angle (rad), angle_vel (rad/sec)
+double state[] = {0,0,2,0};
+// Control = Linear acceleration (m/s^2) of the cart
+double control[] = {0};
+
+double old_angle = 0;
+
+double control_stepperSpeed  = 0; // m/s
+
+
+// double array for low pass of angle velocity
+#define angle_vel_array_size 5
+double angle_vel_array[angle_vel_array_size] = {0};
+int angle_vel_index = 0;
  
 void setup() {
   // Initialize Serial Monitor
-  Serial.begin(115200);
+  Serial.begin(500000);
+  Serial.setTimeout(dt);
+
   
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
@@ -127,7 +130,6 @@ void setup() {
   pinMode(5, OUTPUT);
 
   // Setup stepper
-  Serial.begin(115200);
   stepper.setMaxSpeed(maxSpeed);
   stepper.setAcceleration(accel);
   stepper.setCurrentPosition(0);
@@ -135,248 +137,75 @@ void setup() {
 }
  
 void loop() {
-  // Read serial for time sync
-  if (startMillis == 0){
-    if (Serial.available() > 0) {
-      startMillis = millis();    
-      Serial.read();
-    }
-  }
 
-  // Read serial input:
-  if (Serial.available()) {
-    char inChar = Serial.read();
-
-    printString = "";
-
-    printString += "Target position: ";
-    printString += targetPos;
-    printString += "\tCurrent position: ";
-    printString += stepper.currentPosition();
-
-    if (inChar == 'd') {
-      targetPos += 100;
-      if (targetPos > maxPos) {
-        targetPos = maxPos;
-      }
-      stepper.moveTo(targetPos);
-    }
-    if (inChar == 'D') {
-      targetPos += 1000;
-      if (targetPos > maxPos) {
-        targetPos = maxPos;
-      }
-      stepper.moveTo(targetPos);
-    }
-    if (inChar == 'c') {
-      targetPos += 1;
-      // if (targetPos > maxPos) {
-      //   targetPos = maxPos;
-      // }
-      stepper.moveTo(targetPos);
-    }
-    if (inChar == 'a') {
-      targetPos -= 100;
-      if (targetPos < minPos) {
-        targetPos = minPos;
-      }
-      stepper.moveTo(targetPos);
-    }
-    if (inChar == 'A') {
-      targetPos -= 1000;
-      if (targetPos < minPos) {
-        targetPos = minPos;
-      }
-      stepper.moveTo(targetPos);
-    }
-    if (inChar == 'z') {
-      targetPos -= 1;
-      // if (targetPos < minPos) {
-      //   targetPos = minPos;
-      // }
-      stepper.moveTo(targetPos);
-    }
-    if (inChar == 'w') {
-      stepper.stop();
-    }
-    if (inChar == 's') {
-      stop = !stop;
-    }
-    if (inChar == 'q') {
-      stepper.setCurrentPosition(0);
-      targetPos = 0;
-    }
-    if (inChar == 'e') {
-      stepper.setCurrentPosition(maxPos);
-      targetPos = maxPos;
-    }
-    if (inChar == '+') {
-      maxSpeed *= 1.1;
-      stepper.setMaxSpeed(maxSpeed);
-      printString += "\tMax speed: ";
-      printString += maxSpeed;
-
-      // stepper.setSpeed(maxSpeed);
-    }
-    if (inChar == '-') {
-      maxSpeed /= 1.1;
-      stepper.setMaxSpeed(maxSpeed);
-      printString += "\tMax speed: ";
-      printString += maxSpeed;
-
-      // stepper.setSpeed(maxSpeed);
-    }
-    if (inChar == '*') {
-      accel *= 1.1;
-      stepper.setAcceleration(accel);
-      printString += "\tAcceleration: ";
-      printString += accel;
-    }
-    if (inChar == '/') {
-      accel /= 1.1;
-      stepper.setAcceleration(accel);
-      printString += "\tAcceleration: ";
-      printString += accel;
-    }
-    if (inChar == 'p') {
-      printString += "\tMax speed: ";
-      printString += maxSpeed;
-      printString += "\tAcceleration: ";
-      printString += accel;
-    }
-    if (inChar == 'l') {
-      demo = !demo;
-    }
-    if (inChar == 'o')
-    {
-      p_reg = !p_reg;
-    }
-    if ( inChar == 'k')
-    {
-      // decrease p
-      p_reg_pos /= 1.1;
-    }
-    if ( inChar == 'K')
-    {
-      // increase p
-      p_reg_pos *= 1.1;
-    }
-    if ( inChar == 'i')
-    {
-      // decrease i
-      i_reg_pos /= 1.1;
-    }
-    if ( inChar == 'I')
-    {
-      // increase i
-      i_reg_pos *= 1.1;
-    }
-    if ( inChar == 't')
-    {
-      // Use current angle as target
-      targetAngle = myData.b;
-    }
-    
-
-    Serial.println(printString);
-
-  }
-
-
-  if (demo) {
-    // Demo:
-    #define safeDist 100
-    if (stepper.distanceToGo() == 0) {
-      if (stepper.currentPosition() == minPos + safeDist) {
-        stepper.moveTo(maxPos - safeDist);
-      } else {
-        stepper.moveTo(minPos + safeDist);
-      }
-    }
-  }
-
-  if (p_reg) {
-    // PI-regulator:
-    float p = p_reg_pos;
-    float i = i_reg_pos;
-    #define safeDist 100
-    int input = myData.b;
-    int min_input = targetAngle - 512;
-    int max_input = targetAngle + 512;
-    bool enable;
-    if (input > min_input && input < max_input) {
-      enable = true;
-    } else {
-      enable = false;
-    }
-
-    if (enable) {
-      int current_pos = stepper.currentPosition();
-
-      error = input - targetAngle;
-      #define max_error_sum 10000
-      error_sum += error;
-      if (error_sum > max_error_sum) {
-        error_sum = max_error_sum;
-      }
-      if (error_sum < -max_error_sum) {
-        error_sum = -max_error_sum;
-      }
-      int target = current_pos + p * error + i * error_sum;
-
-
-
-      if (target > maxPos - safeDist) {
-        target = maxPos - safeDist;
-        error_sum = 0;
-      }
-      if (target < minPos + safeDist) {
-        target = minPos + safeDist;
-        error_sum = 0;
-      }
-      stepper.moveTo(target);
-    }
-
-
-  }
-
-  if (main_loop_i >= 1000) {
-    // print
-    main_loop_i = 0;
-    Serial.print("\tError: ");
-    Serial.print(error);
-    Serial.print("\tError sum: ");
-    Serial.print(error_sum);
-    Serial.print("\tInput: ");
-    Serial.print(myData.b);
-    Serial.print("\tP_gain: ");
-    Serial.print(p_reg_pos, 5);
-    Serial.print("\tI_gain: ");
-    Serial.print(i_reg_pos, 5);
-    Serial.print("\tMax speed: ");
-    Serial.print(maxSpeed);
-    Serial.print("\tAcceleration: ");
-    Serial.print(accel);
-    Serial.println();
-
-    //  Error: 502.00   Error sum: 10000.00     Input: 65535    P_gain: 0.06830 I_gain: 0.00102 Max speed: 10794        Acceleration: 96753
-  }
-  main_loop_i++;
-
-  // Update stepper motor:
-  int i = 0;
-  if (!stop) {
-    for (i = 0; i < 1000; i++) {
-      stepper.run();
-      // stepper.runSpeed();
-    }
-  }
-  else
+  if (micros() - last_update > dt)
   {
-    stepper.setCurrentPosition(targetPos);
-    demo = false;
+    last_update = (micros() / dt) * dt;
+
+    Serial.write('x');
+    Serial.write('s');
+    Serial.write('t');
+    // States
+    double pos_state = stepper.currentPosition() * length_per_step;
+    double vel_state = stepper.speed() * length_per_step;
+    // Modulo
+    double angle_state = (myData.b/double(encoded_steps_per_revolution))*2*PI + PI;
+    // double angle_state = (myData.b % encoded_steps_per_revolution)/encoded_steps_per_revolution *2*PI  + PI; 
+    // double angle_vel_state = (angle_state - old_angle) / dt * 1000;
+    // double angle_vel_state = atan2(sin(angle_state - old_angle), cos(angle_state - old_angle)) / dt * 1000;
+
+
+
+    double average_angle_vel = 0;
+    for (int i = 0; i < angle_vel_array_size; i++)
+    {
+      average_angle_vel += angle_vel_array[i];
+    }
+    average_angle_vel /= angle_vel_array_size;
+    old_angle = angle_state;
+    state[0] = pos_state;
+    state[1] = vel_state;
+    state[2] = angle_state;
+    state[3] = average_angle_vel;
+    Serial.write((uint8_t*)state, sizeof(state));
+
+    // Control
+    while (!Serial.available()) {
+
+    }
+
+    Serial.readBytes((uint8_t*)control, sizeof(control));
   }
 
+  // Control
+  // Calculate speed based on control acceleration
+  if (micros() - last_loop > 1000)
+  {
+    int time_since_last_loop = micros() - last_loop;
+
+    control_stepperSpeed += control[0] * (double(time_since_last_loop) / 1000000);
+    // control_stepperSpeed += control[0];
+    stepper.setSpeed(control_stepperSpeed / length_per_step);
+
+    // calculate velocity
+    double angle_state = (myData.b/double(encoded_steps_per_revolution))*2*PI + PI;
+    double angle_vel = atan2(sin(angle_state - old_angle), cos(angle_state - old_angle)) / time_since_last_loop * 1000000;
+    // double angle_vel = (angle_state - old_angle) / time_since_last_loop * 1000;
+    old_angle = angle_state;
+
+    // Append to circular array
+    angle_vel_array[angle_vel_index] = angle_vel;
+    angle_vel_index = (angle_vel_index + 1) % angle_vel_array_size;
+    last_loop = micros();
+  }
+
+
+
+
+  
+
+
+  stepper.runSpeed();
 
 
 }
