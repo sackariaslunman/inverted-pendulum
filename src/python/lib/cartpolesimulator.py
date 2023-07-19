@@ -102,7 +102,7 @@ class CartPoleSerialSimulator(CartPoleSimulator):
 
         last_update = perf_counter()
         with Serial(self._port, self._baudrate, timeout=self._timeout) as ser:
-            while ser.is_open:
+            while ser.is_open and self._running:
                 if ser.in_waiting == 0:
                     continue
 
