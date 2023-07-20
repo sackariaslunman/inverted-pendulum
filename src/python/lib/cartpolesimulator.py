@@ -101,6 +101,7 @@ class CartPoleSerialSimulator(CartPoleSimulator):
             raise ValueError("get_control is None")
 
         last_update = perf_counter()
+        counter = 0
         with Serial(self._port, self._baudrate, timeout=self._timeout) as ser:
             while ser.is_open and self._running:
                 if ser.in_waiting == 0:
@@ -108,7 +109,19 @@ class CartPoleSerialSimulator(CartPoleSimulator):
 
                 ser.read_until(b"xst")
                 state_bytes = ser.read(self._state.nbytes)
-                self._state = np.frombuffer(state_bytes, dtype=self._state.dtype)
+                state = np.frombuffer(state_bytes, dtype=self._state.dtype)
+                state = list(state).copy()
+
+                rolling_n = 5
+                if counter > rolling_n+1:
+                    for i in range(self._system.num_poles):
+                        # low pass filter d_theta
+                        prev_d_thetas = [state[3+2*i]]
+                        prev_d_thetas.extend(self._env.get_state(-j)[3+2*i] for j in range(1, rolling_n+1))
+                        rolling_d_theta = np.mean(prev_d_thetas, axis=0)
+                        state[3+2*i] = rolling_d_theta
+
+                self._state = np.array(state, dtype=self._state.dtype)
 
                 self._control = self.get_control(self._state)
 
@@ -116,6 +129,8 @@ class CartPoleSerialSimulator(CartPoleSimulator):
                 dt = perf_counter() - last_update
                 self._env.step(self._control, self._state, dt)
                 last_update = perf_counter()
+
+                counter += 1
 
                 if self._render_enabled:
                     self._env.render()
@@ -133,7 +148,7 @@ class CartPoleEnvSimulator(CartPoleSimulator):
         self._N_max = int(max_time/env.dt_sim)
         self._running = False
         self._render_enabled = True
-        self._run_process = Thread(target=self.run_loop)
+        self._run_process = Thread(target=self.run_loop, daemon=True)
 
     @property
     def dt(self):

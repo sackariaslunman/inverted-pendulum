@@ -151,7 +151,7 @@ class CartPoleController:
                 u_ff = self._trajectory_controls[self._trajectory_count]
                 desired_control = u_ff
                 u_fb = LQR.feedback(self._trajectory_K_ds[self._trajectory_count], error)
-                control = u_ff + u_fb
+                control = u_ff
                 self._trajectory_count += 1
 
                 if self._trajectory_count >= self._trajectory_max:
