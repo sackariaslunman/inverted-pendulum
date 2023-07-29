@@ -8,12 +8,12 @@ from random import uniform
 from gym import spaces, Env
 import pygame
 from time import perf_counter
-from .cartpolesystem import CartPoleDCMotorSystem, CartPoleStepperMotorSystem
+from .cartpolesystem import CartPoleStepperMotorSystem
 
 class CartPoleEnv(Env):
   def __init__(
     self, 
-    system: CartPoleDCMotorSystem | CartPoleStepperMotorSystem, 
+    system: CartPoleStepperMotorSystem, 
     dt_sim: float,
     integration_method: Callable[[float, Callable[[np.ndarray, np.ndarray], np.ndarray], np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]],
   ):
