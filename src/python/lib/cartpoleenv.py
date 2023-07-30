@@ -8,12 +8,12 @@ from random import uniform
 from gym import spaces, Env
 import pygame
 from time import perf_counter
-from .cartpolesystem import CartPoleStepperMotorSystem
+from .cartpolesystem import CartPoleSystem
 
 class CartPoleEnv(Env):
   def __init__(
     self, 
-    system: CartPoleStepperMotorSystem, 
+    system: CartPoleSystem, 
     dt_sim: float,
     integration_method: Callable[[float, Callable[[np.ndarray, np.ndarray], np.ndarray], np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]],
   ):
@@ -85,7 +85,6 @@ class CartPoleEnv(Env):
     if creative_mode_state is None:
       last_state = self.get_state()
       _, clipped_action = self.system.clip(last_state, action)
-      
       raw_state, d_state = self.integration_method(self.dt_sim, self.system.differentiate, last_state, clipped_action)
       state, _ = self.system.clip(raw_state, clipped_action)
       constraint_state = self.system.constraint_states(state, action)

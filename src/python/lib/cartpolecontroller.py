@@ -7,9 +7,9 @@ from multiprocessing import Process, Queue
 from .cartpolesimulator import CartPoleSimulator
 from .direct_collocation import CartPoleStepperMotorDirectCollocation
 from .regulators import LQR
-from .cartpolesystem import CartPoleStepperMotorSystem
+from .cartpolesystem import CartPoleSystem
 
-def make_solver(N: int, N_collocation: int, system: CartPoleStepperMotorSystem, end_time: float, x0: np.ndarray, target_state: np.ndarray, output: Queue):
+def make_solver(N: int, N_collocation: int, system: CartPoleSystem, end_time: float, x0: np.ndarray, target_state: np.ndarray, output: Queue):
     direct_collocation = CartPoleStepperMotorDirectCollocation(N, N_collocation, system, 0.0001)
     states, controls = direct_collocation.make_solver(end_time, x0, target_state)
     As, Bs = np.vectorize(direct_collocation.linearize, signature='(n),(m)->(n,n),(n,m)')(states, controls)

@@ -6,19 +6,19 @@ from typing import Callable
 from serial import Serial
 from threading import Thread
 from .cartpoleenv import CartPoleEnv
-from .cartpolesystem import CartPoleStepperMotorSystem
+from .cartpolesystem import CartPoleSystem
 from .numerical import rk4_step
 import pandas as pd
 
 class CartPoleSimulator(ABC):
-    def __init__(self, dt: float, system: CartPoleStepperMotorSystem, get_control: Callable[[np.ndarray], np.ndarray] | None = None):
+    def __init__(self, dt: float, system: CartPoleSystem, get_control: Callable[[np.ndarray], np.ndarray] | None = None):
         self._system = system
         self._dt = dt
         self.get_control = get_control
 
     @property
     @abstractmethod
-    def system(self) -> CartPoleStepperMotorSystem:
+    def system(self) -> CartPoleSystem:
         ...
 
     @property
@@ -55,7 +55,7 @@ class CartPoleSimulator(ABC):
         ...
 
 class CartPoleSerialSimulator(CartPoleSimulator):
-    def __init__(self, dt: float, system: CartPoleStepperMotorSystem, get_control: Callable[[np.ndarray],np.ndarray] | None = None):
+    def __init__(self, dt: float, system: CartPoleSystem, get_control: Callable[[np.ndarray],np.ndarray] | None = None):
         super().__init__(dt, system, get_control)
         env = CartPoleEnv(system, dt, rk4_step)
         self._env = env
@@ -78,7 +78,7 @@ class CartPoleSerialSimulator(CartPoleSimulator):
         return self._state
     
     @property
-    def system(self) -> CartPoleStepperMotorSystem:
+    def system(self) -> CartPoleSystem:
         return self._system #type: ignore
 
     @property
@@ -139,7 +139,7 @@ class CartPoleSerialSimulator(CartPoleSimulator):
         return self._env.export()
 
 class CartPoleEnvSimulator(CartPoleSimulator):
-    def __init__(self, dt: float, system: CartPoleStepperMotorSystem, get_control: Callable[[np.ndarray],np.ndarray] | None = None, max_time: float = 60*10):
+    def __init__(self, dt: float, system: CartPoleSystem, get_control: Callable[[np.ndarray],np.ndarray] | None = None, max_time: float = 60*10):
         super().__init__(dt, system, get_control)
         env = CartPoleEnv(system, dt, rk4_step)
         self._env = env
@@ -163,7 +163,7 @@ class CartPoleEnvSimulator(CartPoleSimulator):
         return self._env.get_state()
     
     @property
-    def system(self) -> CartPoleStepperMotorSystem:
+    def system(self) -> CartPoleSystem:
         return self._system #type: ignore
 
     @property

@@ -47,8 +47,8 @@ d_pole_pc1s = diff(pole_pc1s,t);
 d_pole_pc2s = diff(pole_pc2s,t);
 
 % create kinetic energies
-T_c = 1/2*m_c*diff(s,t)^2;
-T_ps = 1/2*pole_ms.*(d_pole_pc1s.^2+d_pole_pc2s.^2)+1/2*pole_Js.*diff(thetas,t).^2;
+T = 1/2*m_c*diff(s,t)^2;
+T = T + sum(1/2*pole_ms.*(d_pole_pc1s.^2+d_pole_pc2s.^2)+1/2*pole_Js.*diff(thetas,t).^2);
 
 % create potential energy
 V = sum(g*pole_ms.*pole_pc2s);
@@ -58,7 +58,7 @@ d_thetas_extended = [0,diff(thetas,t)];
 R = (1/2*pole_ds.*(d_thetas_extended(2:end)-d_thetas_extended(1:end-1)).^2);
 
 % Add equation for tau
-L = T_c-V;
+L = T-V;
 d_s = diff(s,t);
 L_ds = diff(L,d_s);
 lh = diff(L_ds,t) - diff(L,s) + diff(R,d_s);
@@ -67,7 +67,7 @@ eqs = cat(1, eqs, lh==rh);
 
 % Add equations for dd_thetas
 for i = 1:num_poles
-    L = T_ps(i)-V;
+    L = T-V;
     d_theta_i = diff(thetas(i),t);
     theta_i = thetas(i);
     L_d_theta_i = diff(L,d_theta_i);
@@ -81,22 +81,11 @@ dd_thetas = sym("dd_theta",[1 num_poles]);
 eqs = cat(1,eqs,dd_thetas == diff(thetas,t,t));
 
 % Show equations
-% disp("Eqs:")
-% for i = 1:num_poles+1
-%     disp(eqs(i))
-% end
+disp("Eqs:")
+for i = 1:num_poles+1
+    disp(eqs(i))
+end
 
 % solutions
-disp("Sols:")
-iso = isolate(eqs(1),tau);
-sols = [iso];
-disp(rhs(iso))
-
-for i = 1:num_poles
-    iso = isolate(eqs(i+1),diff(thetas(i),t,t));
-    for j = i-1:-1:1
-        iso = subs(iso,diff(thetas(j),t,t),rhs(sols(j+1)));
-    end
-    sols = cat(1,sols,iso);
-    disp(simplify(rhs(iso)))
-end
+sol = solve(eqs,[tau dd_thetas]);
+disp(sol)
