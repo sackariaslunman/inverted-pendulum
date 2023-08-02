@@ -179,9 +179,18 @@ class CartPoleSystem:
             rh = 0
             eqs.append(lh-rh)
 
-        self.sp_vars = [s, d_s] + [item for pair in zip(thetas, d_thetas) for item in pair] + [dd_s] + dd_thetas
+        sp_vars = [s, d_s] + [item for pair in zip(thetas, d_thetas) for item in pair] + [dd_s] + dd_thetas
         sols = sp.solve(eqs, dd_thetas+[tau])
-        self.sp_sols = [sp.simplify(sols[dd_theta]) for dd_theta in dd_thetas] + [sp.simplify(sols[tau])]
+        sp_sols = [sp.simplify(sols[dd_theta]) for dd_theta in dd_thetas] + [sp.simplify(sols[tau])]
+    
+        pure_s, pure_d_s, pure_dd_s = sp.symbols("s d_s dd_s")
+        pure_thetas = [sp.symbols(f"theta{i+1}") for i in range(self.num_poles)] #type: ignore
+        pure_d_thetas = [sp.symbols(f"d_theta{i+1}") for i in range(self.num_poles)] #type: ignore
+        pure_dd_thetas = [sp.symbols(f"dd_theta{i+1}") for i in range(self.num_poles)] #type: ignore
+
+        self.sp_vars = [pure_s, pure_d_s] + [item for pair in zip(pure_thetas, pure_d_thetas) for item in pair] + [pure_dd_s] + pure_dd_thetas
+        subs_dict = dict(zip(sp_vars, self.sp_vars))
+        self.sp_sols = [sol.subs(subs_dict) for sol in sp_sols]
     
     def set_ca_equations(self):
         s = ca.SX.sym("s") #type: ignore
@@ -190,31 +199,16 @@ class CartPoleSystem:
         thetas = [ca.SX.sym(f"theta{i+1}") for i in range(self.num_poles)] #type: ignore
         d_thetas = [ca.SX.sym(f"d_theta{i+1}") for i in range(self.num_poles)] #type: ignore
 
-        s_mx = ca.MX.sym("s") #type: ignore
-        d_s_mx = ca.MX.sym("d_s") #type: ignore
-        dd_s_mx = ca.MX.sym("dd_s") #type: ignore
-        thetas_mx = [ca.MX.sym(f"theta{i+1}") for i in range(self.num_poles)] #type: ignore
-        d_thetas_mx = [ca.MX.sym(f"d_theta{i+1}") for i in range(self.num_poles)] #type: ignore
-
         self.ca_vars = [s, d_s] + [item for pair in zip(thetas, d_thetas) for item in pair] + [dd_s]
         self.ca_state_vars = [s, d_s] + [item for pair in zip(thetas, d_thetas) for item in pair]
         self.ca_control_vars = [dd_s]
         self.ca_d_state_vars = [d_s, dd_s]
         self.ca_constraint_vars = [sympy2casadi(self.sp_sols[-1], sp.Matrix(self.sp_vars[:2+2*self.num_poles+1]), ca.vertcat(*self.ca_vars[:2+2*self.num_poles+1]))]
 
-        self.ca_vars_mx = [s_mx, d_s_mx] + [item for pair in zip(thetas_mx, d_thetas_mx) for item in pair] + [dd_s_mx]
-        self.ca_state_vars_mx = [s_mx, d_s_mx] + [item for pair in zip(thetas_mx, d_thetas_mx) for item in pair]
-        self.ca_control_vars_mx = [dd_s_mx]
-        self.ca_d_state_vars_mx = [d_s_mx, dd_s_mx]
-        self.ca_constraint_vars_mx = [sympy2casadi(self.sp_sols[-1], sp.Matrix(self.sp_vars[:2+2*self.num_poles+1]), ca.vertcat(*self.ca_vars_mx[:2+2*self.num_poles+1]))]
-
-        for d_theta, d_theta_mx, sol in zip(d_thetas, d_thetas_mx, self.sp_sols[:-1]):
+        for d_theta, sol in zip(d_thetas, self.sp_sols[:-1]):
             dd_theta = sympy2casadi(sol, sp.Matrix(self.sp_vars[:2+2*self.num_poles+1]), ca.vertcat(*self.ca_vars[:2+2*self.num_poles+1]))
             self.ca_vars.append(dd_theta)
             self.ca_d_state_vars.extend([d_theta, dd_theta])
-            dd_theta_mx = sympy2casadi(sol, sp.Matrix(self.sp_vars[:2+2*self.num_poles+1]), ca.vertcat(*self.ca_vars_mx[:2+2*self.num_poles+1]))
-            self.ca_vars_mx.append(dd_theta_mx)
-            self.ca_d_state_vars_mx.extend([d_theta_mx, dd_theta_mx])
             
         self.ca_differentiate = ca.Function("differentiate", self.ca_state_vars + [dd_s], self.ca_d_state_vars)
         self.ca_constraint_states = ca.Function("constraint_states", self.ca_state_vars + [dd_s], self.ca_constraint_vars)     

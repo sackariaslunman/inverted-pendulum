@@ -3,16 +3,22 @@ from numpy import radians
 import pandas as pd
 from enum import Enum
 from threading import Thread
-from multiprocessing import Queue
+from multiprocessing import Queue, Process
 from .cartpolesimulator import CartPoleSimulator
 from .direct_collocation import CartPoleDirectCollocation
-from .cartpolesystem import CartPoleSystem
 from .regulators import LQR
 
 def make_solver(
         N: int, 
         N_collocation: int,
-        system: CartPoleSystem,
+        num_poles: int, 
+        m_c: float,
+        radius: float,
+        state_lower_bound: np.ndarray,
+        state_upper_bound: np.ndarray,
+        state_margin: np.ndarray,
+        sp_vars, 
+        sp_sols, 
         end_time: float, 
         x0: np.ndarray, 
         target_state: np.ndarray, 
@@ -21,7 +27,14 @@ def make_solver(
     direct_collocation = CartPoleDirectCollocation(
         N, 
         N_collocation, 
-        system,
+        num_poles, 
+        m_c,
+        radius,
+        state_lower_bound,
+        state_upper_bound,
+        state_margin,
+        sp_vars, 
+        sp_sols, 
         0.0001
     )
     states, controls = direct_collocation.make_solver(end_time, x0, target_state)
@@ -97,10 +110,17 @@ class CartPoleController:
         x0 = self._target_state
 
         output = Queue()
-        process = Thread(target=make_solver, args=(
+        process = Process(target=make_solver, args=(
             N,
             N_collocation, 
-            system,
+            system.num_poles, 
+            system.m_c,
+            system.motor.r,
+            system.state_lower_bound,
+            system.state_upper_bound,
+            system.state_margin,
+            system.sp_vars,
+            system.sp_sols,
             end_time, 
             x0, 
             target_state, 
@@ -255,7 +275,11 @@ class CartPoleController:
                         pos = min_pos
 
                     pole_pos = [bool(int(input(f"Enter pole {i} position ('0' for down or '1' for up): "))) for i in range(self._system.num_poles)]
-                    end_time = float(input('Enter end time: '))
+                    end_time = float(input('Enter end time (between 1 and 10 seconds): '))
+                    if end_time > 10:
+                        end_time = 10
+                    elif end_time < 1:
+                        end_time = 1
                     trajectory_process = Thread(target=self.create_trajectory, args=(pos, pole_pos, end_time))
                     trajectory_process.start()
                 except ValueError:
