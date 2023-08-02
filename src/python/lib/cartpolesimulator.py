@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Callable
 from serial import Serial
 from threading import Thread
+from multiprocessing import Process
 from .cartpoleenv import CartPoleEnv
 from .cartpolesystem import CartPoleSystem
 from .numerical import rk4_step
@@ -110,16 +111,16 @@ class CartPoleSerialSimulator(CartPoleSimulator):
                 ser.read_until(b"xst")
                 state_bytes = ser.read(self._state.nbytes)
                 state = np.frombuffer(state_bytes, dtype=self._state.dtype)
-                state = list(state).copy()
+                # state = list(state).copy()
 
-                rolling_n = 5
-                if counter > rolling_n+1:
-                    for i in range(self._system.num_poles):
-                        # low pass filter d_theta
-                        prev_d_thetas = [state[3+2*i]]
-                        prev_d_thetas.extend(self._env.get_state(-j)[3+2*i] for j in range(1, rolling_n+1))
-                        rolling_d_theta = np.mean(prev_d_thetas, axis=0)
-                        state[3+2*i] = rolling_d_theta
+                # rolling_n = 5
+                # if counter > rolling_n+1:
+                #     for i in range(self._system.num_poles):
+                #         # low pass filter d_theta
+                #         prev_d_thetas = [state[3+2*i]]
+                #         prev_d_thetas.extend(self._env.get_state(-j)[3+2*i] for j in range(1, rolling_n+1))
+                #         rolling_d_theta = np.mean(prev_d_thetas, axis=0)
+                #         state[3+2*i] = rolling_d_theta
 
                 self._state = np.array(state, dtype=self._state.dtype)
 

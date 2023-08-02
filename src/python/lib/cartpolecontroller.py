@@ -3,17 +3,29 @@ from numpy import radians
 import pandas as pd
 from enum import Enum
 from threading import Thread
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
 from .cartpolesimulator import CartPoleSimulator
-from .direct_collocation import CartPoleStepperMotorDirectCollocation
-from .regulators import LQR
+from .direct_collocation import CartPoleDirectCollocation
 from .cartpolesystem import CartPoleSystem
+from .regulators import LQR
 
-def make_solver(N: int, N_collocation: int, system: CartPoleSystem, end_time: float, x0: np.ndarray, target_state: np.ndarray, output: Queue):
-    direct_collocation = CartPoleStepperMotorDirectCollocation(N, N_collocation, system, 0.0001)
+def make_solver(
+        N: int, 
+        N_collocation: int,
+        system: CartPoleSystem,
+        end_time: float, 
+        x0: np.ndarray, 
+        target_state: np.ndarray, 
+        output: Queue
+    ):
+    direct_collocation = CartPoleDirectCollocation(
+        N, 
+        N_collocation, 
+        system,
+        0.0001
+    )
     states, controls = direct_collocation.make_solver(end_time, x0, target_state)
-    As, Bs = np.vectorize(direct_collocation.linearize, signature='(n),(m)->(n,n),(n,m)')(states, controls)
-    output.put([states, controls, As, Bs])
+    output.put([states, controls])
 
 class ControlType(Enum):
     LQR = 0
@@ -51,8 +63,8 @@ class CartPoleController:
 
         self.C = np.diag([1, 1]+[1, 1]*self._system.num_poles)
         self.D = np.zeros([1, 1])
-        self.Q = np.diag([100, 1]+[100, 1]*self._system.num_poles)
-        self.R = np.diag([1])
+        self.Q = np.diag([10, 1]+[10, 1]*self._system.num_poles)
+        self.R = np.diag([0.5])
 
         self._desired_controls = []
         self._desired_states = []
@@ -85,14 +97,23 @@ class CartPoleController:
         x0 = self._target_state
 
         output = Queue()
-        process = Process(target=make_solver, args=(N, N_collocation, system, end_time, x0, target_state, output))
+        process = Thread(target=make_solver, args=(
+            N,
+            N_collocation, 
+            system,
+            end_time, 
+            x0, 
+            target_state, 
+            output
+        ))
         process.start()
 
         while output.empty():
             pass
         result = output.get()
-        states, controls, As, Bs = result
+        states, controls = result
 
+        As, Bs = np.vectorize(system.linearize, signature='(n),(m)->(n,n),(n,m)')(states, controls)
         A_ds, B_ds = np.vectorize(LQR.discretize, signature='(),(n,n),(n,m),(a,b),(c,d)->(n,n),(n,m)')(self.dt, As, Bs, self.C, self.D)
         _, K_ds = LQR.calculate_finite_K_ds(A_ds, B_ds, self.Q, self.R)
 
@@ -151,7 +172,7 @@ class CartPoleController:
                 u_ff = self._trajectory_controls[self._trajectory_count]
                 desired_control = u_ff
                 u_fb = LQR.feedback(self._trajectory_K_ds[self._trajectory_count], error)
-                control = u_ff
+                control = u_ff + u_fb
                 self._trajectory_count += 1
 
                 if self._trajectory_count >= self._trajectory_max:

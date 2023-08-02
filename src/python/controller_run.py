@@ -5,20 +5,20 @@ from lib.cartpolesystem import CartPoleSystem, Pole, Cart
 from lib.motors import StepperMotor
 
 def main():
-    dt = 0.01
+    dt = 0.005
     g = 9.81
     r = 0.04456
     x_max = 1.15/2
     l1 = 0.225
-    # m1 = 0.0445
-    m1 = 0.0445 * 1.0666666
+    m1 = 0.0445
     m = 0.2167
-    u_p1 = 0
-    J = 0.001
+    d1 = 0.0003
+    # J = 8.25e-4
+    J = 2.23e-4
 
-    cart = Cart(m, 0.01, (-x_max, x_max), 0.25)
-    motor = StepperMotor(r, (-2.7, 2.7), 0.1, (-1.5, 1.5), 0.1)
-    poles = [Pole(m1, l1, l1/2, u_p1, J)]
+    cart = Cart(m, 0.01, (-x_max, x_max), 0.1)
+    motor = StepperMotor(r, (-2.7, 2.7), 0.1, (-2, 2), 0.1)
+    poles = [Pole(m1, l1, l1/2, d1, J)]
     system = CartPoleSystem(cart, motor, poles, g)
 
     if (input("Simulate (y/n)?") == "y"):

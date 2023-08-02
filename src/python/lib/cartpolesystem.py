@@ -2,6 +2,7 @@ from __future__ import annotations
 import numpy as np
 import casadi as ca
 import sympy as sp 
+import sympy.physics.mechanics as me
 from .motors import StepperMotor
 from .utils import sympy2casadi
 
@@ -41,7 +42,6 @@ class Pole:
     def copy(self) -> Pole:
         return Pole(self.m, self.l, self.a, self.d, self.J)
 
-    
 class CartPoleSystem:
     def __init__(
         self,
@@ -82,8 +82,9 @@ class CartPoleSystem:
         self.set_ca_equations()
 
     def constraint_states(self, state: np.ndarray, control: np.ndarray) -> np.ndarray:
-        dd_s = control[0]
-        f = self.m_c*dd_s
+        values = np.concatenate((state, control))
+        c_states = self.ca_constraint_states(*values)
+        f = np.array(c_states).flatten().astype(np.float64)[0] #type: ignore
         torque = f*self.motor.r
         
         return np.array([torque])
@@ -132,13 +133,13 @@ class CartPoleSystem:
         return error
 
     def set_sp_equations(self):
-        t = sp.symbols("t")
-        s = sp.Function("s")(t) #type: ignore
-        d_s = sp.diff(s, t)
-        dd_s = sp.diff(d_s, t)
-        thetas = [sp.Function(f"theta{i+1}")(t) for i in range(self.num_poles)] #type: ignore
-        d_thetas = [sp.diff(theta,t) for theta in thetas]
-        dd_thetas = [sp.diff(d_theta,t) for d_theta in d_thetas]
+        s = me.dynamicsymbols("s")
+        d_s = sp.diff(s)
+        dd_s = sp.diff(d_s)
+        thetas = [me.dynamicsymbols(f"theta{i+1}") for i in range(self.num_poles)] #type: ignore
+        d_thetas = [sp.diff(theta) for theta in thetas]
+        dd_thetas = [sp.diff(d_theta) for d_theta in d_thetas]
+        tau = sp.symbols("tau")
 
         pole_pc1s = []
         pole_pc2s = []
@@ -146,15 +147,15 @@ class CartPoleSystem:
             prev_1 = 0
             prev_2 = 0
             for prev_l, prev_theta in list(zip(self.pole_ls, thetas))[:i]:
-                prev_1 += -prev_l*sp.sin(prev_theta)
-                prev_2 += prev_l*sp.cos(prev_theta)
-            pole_pc1s.append(s-a*sp.sin(theta)+prev_1)
-            pole_pc2s.append(a*sp.cos(theta)+prev_2)
+                prev_1 += -prev_l*sp.sin(-prev_theta) #type: ignore
+                prev_2 += prev_l*sp.cos(-prev_theta) #type: ignore
+            pole_pc1s.append(s-a*sp.sin(-theta)+prev_1) #type: ignore
+            pole_pc2s.append(a*sp.cos(-theta)+prev_2) #type: ignore
 
         T = 1/2*self.m_c*d_s**2 #type: ignore
         for m, pc1, pc2, J, d_theta in zip(self.pole_ms, pole_pc1s, pole_pc2s, self.pole_Js, d_thetas):
-            d_pc1 = sp.diff(pc1,t)
-            d_pc2 = sp.diff(pc2,t)
+            d_pc1 = sp.diff(pc1)
+            d_pc2 = sp.diff(pc2)
             T += 1/2*m*(d_pc1**2 + d_pc2**2) + 1/2*J*d_theta**2 #type: ignore
             
         V = 0   
@@ -168,15 +169,19 @@ class CartPoleSystem:
             prev_w = d_theta
 
         eqs = []
+        L = T-V
+        lh = sp.diff(sp.diff(L, d_s)) - sp.diff(L, s) + sp.diff(R, d_s) #type: ignore
+        rh = tau
+        eqs = [lh-rh]
         for theta, d_theta in zip(thetas, d_thetas):
             L = T-V
-            lh = sp.diff(sp.diff(L, d_theta),t) - sp.diff(L, theta) + sp.diff(R, d_theta) #type: ignore
+            lh = sp.diff(sp.diff(L, d_theta)) - sp.diff(L, theta) + sp.diff(R, d_theta) #type: ignore
             rh = 0
             eqs.append(lh-rh)
 
         self.sp_vars = [s, d_s] + [item for pair in zip(thetas, d_thetas) for item in pair] + [dd_s] + dd_thetas
-        sols = sp.solve(eqs, dd_thetas)
-        self.sp_sols = [sp.simplify(sols[dd_theta]) for dd_theta in dd_thetas]
+        sols = sp.solve(eqs, dd_thetas+[tau])
+        self.sp_sols = [sp.simplify(sols[dd_theta]) for dd_theta in dd_thetas] + [sp.simplify(sols[tau])]
     
     def set_ca_equations(self):
         s = ca.SX.sym("s") #type: ignore
@@ -185,17 +190,34 @@ class CartPoleSystem:
         thetas = [ca.SX.sym(f"theta{i+1}") for i in range(self.num_poles)] #type: ignore
         d_thetas = [ca.SX.sym(f"d_theta{i+1}") for i in range(self.num_poles)] #type: ignore
 
+        s_mx = ca.MX.sym("s") #type: ignore
+        d_s_mx = ca.MX.sym("d_s") #type: ignore
+        dd_s_mx = ca.MX.sym("dd_s") #type: ignore
+        thetas_mx = [ca.MX.sym(f"theta{i+1}") for i in range(self.num_poles)] #type: ignore
+        d_thetas_mx = [ca.MX.sym(f"d_theta{i+1}") for i in range(self.num_poles)] #type: ignore
+
         self.ca_vars = [s, d_s] + [item for pair in zip(thetas, d_thetas) for item in pair] + [dd_s]
         self.ca_state_vars = [s, d_s] + [item for pair in zip(thetas, d_thetas) for item in pair]
         self.ca_control_vars = [dd_s]
         self.ca_d_state_vars = [d_s, dd_s]
+        self.ca_constraint_vars = [sympy2casadi(self.sp_sols[-1], sp.Matrix(self.sp_vars[:2+2*self.num_poles+1]), ca.vertcat(*self.ca_vars[:2+2*self.num_poles+1]))]
 
-        for d_theta, sol in zip(d_thetas, self.sp_sols):
+        self.ca_vars_mx = [s_mx, d_s_mx] + [item for pair in zip(thetas_mx, d_thetas_mx) for item in pair] + [dd_s_mx]
+        self.ca_state_vars_mx = [s_mx, d_s_mx] + [item for pair in zip(thetas_mx, d_thetas_mx) for item in pair]
+        self.ca_control_vars_mx = [dd_s_mx]
+        self.ca_d_state_vars_mx = [d_s_mx, dd_s_mx]
+        self.ca_constraint_vars_mx = [sympy2casadi(self.sp_sols[-1], sp.Matrix(self.sp_vars[:2+2*self.num_poles+1]), ca.vertcat(*self.ca_vars_mx[:2+2*self.num_poles+1]))]
+
+        for d_theta, d_theta_mx, sol in zip(d_thetas, d_thetas_mx, self.sp_sols[:-1]):
             dd_theta = sympy2casadi(sol, sp.Matrix(self.sp_vars[:2+2*self.num_poles+1]), ca.vertcat(*self.ca_vars[:2+2*self.num_poles+1]))
             self.ca_vars.append(dd_theta)
             self.ca_d_state_vars.extend([d_theta, dd_theta])
+            dd_theta_mx = sympy2casadi(sol, sp.Matrix(self.sp_vars[:2+2*self.num_poles+1]), ca.vertcat(*self.ca_vars_mx[:2+2*self.num_poles+1]))
+            self.ca_vars_mx.append(dd_theta_mx)
+            self.ca_d_state_vars_mx.extend([d_theta_mx, dd_theta_mx])
             
-        self.ca_differentiate = ca.Function("differentiate", self.ca_state_vars + [dd_s], self.ca_d_state_vars)     
+        self.ca_differentiate = ca.Function("differentiate", self.ca_state_vars + [dd_s], self.ca_d_state_vars)
+        self.ca_constraint_states = ca.Function("constraint_states", self.ca_state_vars + [dd_s], self.ca_constraint_vars)     
 
         vars = ca.vertcat(*(self.ca_state_vars + self.ca_control_vars))
         eqs = ca.vertcat(*self.ca_d_state_vars)
