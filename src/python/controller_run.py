@@ -1,8 +1,7 @@
 from serial.tools.list_ports import comports
 from lib.cartpolecontroller import CartPoleController
 from lib.cartpolesimulator import CartPoleEnvSimulator, CartPoleSerialSimulator
-from lib.cartpolesystem import CartPoleSystem, Pole, Cart
-from lib.motors import StepperMotor
+from lib.cartpolesystem import CartPoleSystem, Pole, Cart, StepperMotor
 
 def main():
     dt = 0.005
@@ -13,14 +12,21 @@ def main():
     m1 = 0.0445
     m = 0.2167
     d1 = 0.0003
-    # J = 8.25e-4
     J = 2.23e-4
 
     cart = Cart(m, 0.01, (-x_max, x_max), 0.1)
     motor = StepperMotor(r, (-2.7, 2.7), 0.1, (-2, 2), 0.1)
     poles = [Pole(m1, l1, l1/2, d1, J)]
-    system = CartPoleSystem(cart, motor, poles, g)
+    path = "./cartpolesystems"
+    
+    system = CartPoleSystem(cart, motor, poles, g, False)
 
+    if system.check_equations(path):
+        system.import_equations(path)
+    else:
+        system.set_equations()
+        system.export_equations(path)
+    
     if (input("Simulate (y/n)?") == "y"):
         sim = CartPoleEnvSimulator(dt, system)
         controller = CartPoleController(sim, dt)
