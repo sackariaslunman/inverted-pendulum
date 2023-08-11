@@ -7,4 +7,3 @@ gym
 pygame
 casadi
 pyserial
-matlabengine

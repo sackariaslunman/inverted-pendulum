@@ -77,7 +77,7 @@ class CartPoleController:
         self.C = np.diag([1, 1]+[1, 1]*self._system.num_poles)
         self.D = np.zeros([1, 1])
         self.Q = np.diag([10, 1]+[10, 1]*self._system.num_poles)
-        self.R = np.diag([0.5])
+        self.R = np.diag([1])
 
         self._desired_controls = []
         self._desired_states = []
