@@ -30,11 +30,12 @@ unsigned long startMillis = 0;
 // Structure example to receive data
 // Must match the sender structure
 typedef struct struct_message {
-    uint16_t b;
+    int16_t b;
 } struct_message;
 
 // Create a struct_message called myData
 struct_message myData;
+struct_message xData;
 
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
@@ -56,7 +57,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
 AccelStepper stepper(1, stepPin, dirPin);
 
-int maxSpeed = 10000;
+int maxSpeed = 9000;
 int accel = 50000;
 
 int targetPos = 0;
@@ -87,6 +88,10 @@ const double angle_per_step = 2*PI / encoded_steps_per_revolution; // rad
 #define minPos -rail_length / length_per_step / 2 
 
 
+
+// #define vel_method_1
+
+
 // serial-communication\src\main.cpp
 long last_update = 0;
 long last_loop = 0;
@@ -103,9 +108,13 @@ double control_stepperSpeed  = 0; // m/s
 
 
 // double array for low pass of angle velocity
-#define angle_vel_array_size 5
+#define angle_vel_array_size 10
 double angle_vel_array[angle_vel_array_size] = {0};
 int angle_vel_index = 0;
+
+#define angle_array_size 10
+double angle_array[angle_array_size] = {0};
+int angle_index = 0;
  
 void setup() {
   // Initialize Serial Monitor
@@ -157,11 +166,23 @@ void loop() {
 
 
     double average_angle_vel = 0;
+    #ifdef vel_method_1
     for (int i = 0; i < angle_vel_array_size; i++)
     {
       average_angle_vel += angle_vel_array[i];
+      average_angle_vel /= angle_vel_array_size;
     }
-    average_angle_vel /= angle_vel_array_size;
+    #endif
+    #ifdef vel_method_2
+    // Calculate mean velocity for the last array values
+    // 	f_x = (10*f[i-6]-72*f[i-5]+225*f[i-4]-400*f[i-3]+450*f[i-2]-360*f[i-1]+147*f[i+0])/(60*1.0*h**1)
+    average_angle_vel = (10*angle_array[(angle_index - 6 + angle_array_size) % angle_array_size] - 72*angle_array[(angle_index - 5 + angle_array_size) % angle_array_size] + 225*angle_array[(angle_index - 4 + angle_array_size) % angle_array_size] - 400*angle_array[(angle_index - 3 + angle_array_size) % angle_array_size] + 450*angle_array[(angle_index - 2 + angle_array_size) % angle_array_size] - 360*angle_array[(angle_index - 1 + angle_array_size) % angle_array_size] + 147*angle_array[(angle_index + 0 + angle_array_size) % angle_array_size])/(60*1.0*dt*1e-6);
+    #endif
+    #ifndef vel_method_1
+      average_angle_vel = atan2(sin(angle_state - old_angle), cos(angle_state - old_angle)) / dt * 1000000;
+    #endif
+
+    
     old_angle = angle_state;
     state[0] = pos_state;
     state[1] = vel_state;
@@ -181,21 +202,45 @@ void loop() {
   // Calculate speed based on control acceleration
   if (micros() - last_loop > 1000)
   {
+    
     int time_since_last_loop = micros() - last_loop;
 
+    // Acceleration update
     control_stepperSpeed += control[0] * (double(time_since_last_loop) / 1000000);
-    // control_stepperSpeed += control[0];
+    // Limit speed
+    if (control_stepperSpeed > maxSpeed)
+    {
+      control_stepperSpeed = maxSpeed-1;
+    }
+    else if (control_stepperSpeed < -maxSpeed)
+    {
+      control_stepperSpeed = -maxSpeed+1;
+    }
     stepper.setSpeed(control_stepperSpeed / length_per_step);
 
-    // calculate velocity
-    double angle_state = (myData.b/double(encoded_steps_per_revolution))*2*PI + PI;
-    double angle_vel = atan2(sin(angle_state - old_angle), cos(angle_state - old_angle)) / time_since_last_loop * 1000000;
-    // double angle_vel = (angle_state - old_angle) / time_since_last_loop * 1000;
-    old_angle = angle_state;
 
+
+    // Calculate velocity
+    #ifdef vel_method_1
+      double angle_state = (myData.b/double(encoded_steps_per_revolution))*2*PI + PI;
+      double angle_vel = atan2(sin(angle_state - old_angle), cos(angle_state - old_angle)) / time_since_last_loop * 1000000;
+      old_angle = angle_state;
     // Append to circular array
     angle_vel_array[angle_vel_index] = angle_vel;
     angle_vel_index = (angle_vel_index + 1) % angle_vel_array_size;
+    #endif
+
+    #ifdef vel_method_2
+    // Store angle in circular array, then mean velocity for the last array values
+      double angle_state = (myData.b/double(encoded_steps_per_revolution))*2*PI + PI;
+      angle_array[angle_index] = angle_state;
+      angle_index = (angle_index + 1) % angle_array_size;
+    #endif
+
+
+
+
+
     last_loop = micros();
   }
 
