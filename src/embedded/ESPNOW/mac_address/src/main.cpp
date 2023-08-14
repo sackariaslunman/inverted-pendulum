@@ -10,6 +10,8 @@ void setup(){
   Serial.print("ESP Board MAC Address:  ");
   Serial.println(WiFi.macAddress());
 }
+
+// Ny esp (nytt chip) C0:49:EF:F0:93:34
  
 void loop(){
 

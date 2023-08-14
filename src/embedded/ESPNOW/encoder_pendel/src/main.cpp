@@ -9,10 +9,9 @@ bool ledState = 0;
 
 // Encoder
 #define ENCODER_PIN_A 21
-#define ENCODER_PIN_B 22
+#define ENCODER_PIN_B 22 
 #define ENCODER_PIN_X 19
 
-#define REVERSE_ENCODER 1
 
 // Endstop
 #define NEG_ENDSTOP_PIN 33
@@ -63,9 +62,13 @@ void endstopPosCall();
 // Ny esp med headers : 58:BF:25:38:02:FC
 // Esp stepper encoder : 58:BF:25:37:F8:C8
 // Ny test esp utan headers : C0:49:EF:F0:93:34
-// uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x38, 0x02, 0xFC};
-uint8_t broadcastAddress[] = {0xC0, 0x49, 0xEF, 0xF0, 0x93, 0x34};
+uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x38, 0x02, 0xFC};
+// uint8_t broadcastAddress[] = {0xC0, 0x49, 0xEF, 0xF0, 0x93, 0x34};
+
+
 byte sender_ID = 0;
+#define REVERSE_ENCODER 0
+
 
 typedef struct struct_message {
   int16_t encoder_pos;
@@ -212,6 +215,10 @@ int readPosBuffer(int index){
 }
 
 void updateBuffer(){
+  if (encoderPosition < 0){
+    encoderPosition = encoderPosition + 4096;
+  }
+  encoderPosition = encoderPosition % 4096;
   writePosBuffer(encoderPosition);
 }
 
@@ -231,13 +238,13 @@ void encoderBCall(){
 }
 
 void encoderXCall(){
-  encoderXStateOld = encoderXState;
-  encoderXState = digitalRead(ENCODER_PIN_X);
-  if (encoderXState == HIGH){
-    // Reset encoder to nearest multiple of 4096
-    encoderPosition = static_cast<int>(std::round(encoderPosition / 4096.0)) * 4096;
-  }
-  updateBuffer();
+  // encoderXStateOld = encoderXState;
+  // encoderXState = digitalRead(ENCODER_PIN_X);
+  // if (encoderXState == HIGH){
+  //   // Reset encoder to nearest multiple of 4096
+  //   encoderPosition = static_cast<int>(std::round(encoderPosition / 4096.0)) * 4096;
+  // }
+  // updateBuffer();
 }
 
 void encoderAUpdate(){
@@ -279,32 +286,20 @@ void encoderBUpdate(){
 }
 
 
-float calculateSpeed(){
-  int pos1 = readPosBuffer(0);
-  int pos2 = readPosBuffer(-1);
-  int pos3 = readPosBuffer(-2);
-  int pos4 = readPosBuffer(-3);
 
-  float dt = 0.001;
-
-  float speed = (-2*pos4 + 9*pos3 - 18*pos2 + 11*pos1)/(6*dt);
-
-  return speed;
-
-}
 
 
 // Endstop functions
 void endstopNegCall(){
-  endstopNegState = digitalRead(NEG_ENDSTOP_PIN);
-  if (endstopNegState == HIGH){
-    encoderPosition = 0;
-  }
+  // endstopNegState = digitalRead(NEG_ENDSTOP_PIN);
+  // if (endstopNegState == HIGH){
+  //   encoderPosition = 0;
+  // }
 }
 
 void endstopPosCall(){
-  endstopPosState = digitalRead(POS_ENDSTOP_PIN);
-  if (endstopPosState == HIGH){
-    encoderPosition = 15860;
-  }
+//   endstopPosState = digitalRead(POS_ENDSTOP_PIN);
+//   if (endstopPosState == HIGH){
+//     encoderPosition = 15860;
+//   }
 }
