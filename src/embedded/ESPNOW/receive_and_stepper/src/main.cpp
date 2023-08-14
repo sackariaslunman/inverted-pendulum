@@ -158,7 +158,7 @@ void loop() {
     double pos_state = stepper.currentPosition() * length_per_step;
     double vel_state = stepper.speed() * length_per_step;
     // Modulo
-    double angle_state = (myData.b/double(encoded_steps_per_revolution))*2*PI + PI;
+    double angle_state = (myData.b/double(encoded_steps_per_revolution))*2*PI - PI;
     // double angle_state = (myData.b % encoded_steps_per_revolution)/encoded_steps_per_revolution *2*PI  + PI; 
     // double angle_vel_state = (angle_state - old_angle) / dt * 1000;
     // double angle_vel_state = atan2(sin(angle_state - old_angle), cos(angle_state - old_angle)) / dt * 1000;
