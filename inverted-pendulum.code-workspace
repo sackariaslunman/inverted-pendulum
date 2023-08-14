@@ -4,8 +4,7 @@
 			"path": "."
 		},
 		{
-			"name": "serial-communication",
-			"path": "src/embedded/serial-communication"
+			"path": "src/embedded/ESPNOW/receive_and_stepper"
 		}
 	],
 	"settings": {}

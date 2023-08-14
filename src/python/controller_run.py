@@ -14,6 +14,7 @@ def main():
     d1 = 0.0003
     J = 2.23e-4
 
+    print("Calculating equations (1-5 min)...")
     cart = Cart(m, 0.01, (-x_max, x_max), 0.1)
     motor = StepperMotor(r, (-2.7, 2.7), 0.1, (-2, 2), 0.1)
     poles = [Pole(m1, l1, l1/2, d1, J)]
