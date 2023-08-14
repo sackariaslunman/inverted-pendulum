@@ -14,12 +14,7 @@
 #include <esp_now.h>
 #include <WiFi.h>
 
-// Timer to measure time between messages
-// last time
-long startTime = 0;
-// Current time
-long stopTime = 0;
-
+#include "encoder.h"
 
 // Time
 unsigned long startMillis = 0;
@@ -39,6 +34,15 @@ struct_message pendulumData_1;
 // struct_message 3Data;
 struct_message cartData;
 
+
+// Encoder objects
+RotaryEncoder pendulum_0;
+RotaryEncoder pendulum_1;
+RotaryEncoder cart;
+
+// array for counting espnow updates per id
+int update_count[5] = {0,0,0,0,0};
+
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   memcpy(&recivedData, incomingData, sizeof(recivedData));
@@ -52,10 +56,14 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
   // Update struct with corresponding id
   if (recivedData.sender_id == 0){
-    pendulumData_0 = recivedData;
+    // pendulumData_0 = recivedData;
+    pendulum_0.update(recivedData.encoder_pos);
+    update_count[0] += 1;
   }
   else if (recivedData.sender_id == 1){
-    pendulumData_1 = recivedData;
+    // pendulumData_1 = recivedData;
+    pendulum_1.update(recivedData.encoder_pos);
+    update_count[1] += 1;
   }
   else if (recivedData.sender_id == 2){
     // 2Data = recivedData;
@@ -64,12 +72,15 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     // 3Data = recivedData;
   }
   else if (recivedData.sender_id == 4){
-    cartData = recivedData;
+    // cartData = recivedData;
+    cart.update(recivedData.encoder_pos);
+    update_count[4] += 1;
   }
   else{
     Serial.println("Error: Invalid sender ID");
   }
 }
+
 
 
 
@@ -98,20 +109,43 @@ void setup() {
  
 void loop() {
 // See if 100 ms has passed
-  if (millis() - startMillis > 100)  {
+  if (millis() - startMillis > 1000)  {
     // Reset the timer
     startMillis = millis();
 
     // Print encoder pos for each id
     Serial.print("Pendulum 0: ");
-    Serial.print(pendulumData_0.encoder_pos);
+    Serial.print(pendulum_0.getPos());
     Serial.print("  Pendulum 1: ");
-    Serial.print(pendulumData_1.encoder_pos);
-
+    Serial.print(pendulum_1.getPos());
     Serial.print("  Cart: ");
-    Serial.print(cartData.encoder_pos);
+    Serial.print(cart.getPos());
+
+    // Velocity for each id
+    Serial.print("  Pendulum 0: ");
+    Serial.print(pendulum_0.getVel());
+    Serial.print("  Pendulum 1: ");
+    Serial.print(pendulum_1.getVel());
+    Serial.print("  Cart: ");
+    Serial.print(cart.getVel());
+    
+
+    // Print update count for each id
+    // Serial.print("  Pendulum 0: ");
+    // Serial.print(update_count[0]);
+    // Serial.print("  Pendulum 1: ");
+    // Serial.print(update_count[1]);
+    // Serial.print("  Cart: ");
+    // Serial.print(update_count[4]);
+
+    // clear update count
+    update_count[0] = 0;
+    update_count[1] = 0;
+    update_count[4] = 0;
+
 
     Serial.println();
   }
+
 
 }
