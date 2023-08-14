@@ -27,43 +27,48 @@ unsigned long startMillis = 0;
 // Structure example to receive data
 // Must match the sender structure
 typedef struct struct_message {
-    // char a[32];
-    uint16_t b;
-    // float c;
-    // bool d;
+    uint16_t encoder_pos;
+    byte sender_id;
 } struct_message;
 
-// Create a struct_message called myData
-struct_message myData;
+// Create a struct_message called recivedData
+struct_message recivedData;
+struct_message pendulumData_0;
+struct_message pendulumData_1;
+// struct_message 2Data;
+// struct_message 3Data;
+struct_message cartData;
 
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  memcpy(&myData, incomingData, sizeof(myData));
+  memcpy(&recivedData, incomingData, sizeof(recivedData));
   // Serial.print("Bytes received: ");
-  // Serial.println(len);
-  // Serial.print("Char: ");
-  // Serial.println(myData.a);
-  // Serial.print("Int: ");
-  Serial.print(myData.b); 
-  Serial.print("\t");
-  Serial.print(millis() - startMillis);
-  // Serial.print("Float: ");
-  // Serial.println(myData.c);
-  // Serial.print("Bool: ");
-  // Serial.println(myData.d);
-  Serial.println();
+  // Serial.print(len);
+  // Serial.print("  Encoder_pos: ");
+  // Serial.print(recivedData.encoder_pos);
+  // Serial.print("  Sender ID: ");
+  // Serial.print(recivedData.sender_id);  
+  // Serial.println();
 
-  // if (myData.b == 0) {
-  //   startTime = millis();
-  // }
-
-  // if (myData.b == 999) {
-  //   stopTime = millis();
-  //   Serial.print("Time between messages: ");
-  //   Serial.print(stopTime - startTime);
-  //   Serial.println(" ms");
-  // }
-  
+  // Update struct with corresponding id
+  if (recivedData.sender_id == 0){
+    pendulumData_0 = recivedData;
+  }
+  else if (recivedData.sender_id == 1){
+    pendulumData_1 = recivedData;
+  }
+  else if (recivedData.sender_id == 2){
+    // 2Data = recivedData;
+  }
+  else if (recivedData.sender_id == 3){
+    // 3Data = recivedData;
+  }
+  else if (recivedData.sender_id == 4){
+    cartData = recivedData;
+  }
+  else{
+    Serial.println("Error: Invalid sender ID");
+  }
 }
 
 
@@ -92,11 +97,21 @@ void setup() {
 }
  
 void loop() {
-  // Read serial for time sync
-  if (startMillis == 0){
-    if (Serial.available() > 0) {
-      startMillis = millis();    
-      Serial.read();
-    }
+// See if 100 ms has passed
+  if (millis() - startMillis > 100)  {
+    // Reset the timer
+    startMillis = millis();
+
+    // Print encoder pos for each id
+    Serial.print("Pendulum 0: ");
+    Serial.print(pendulumData_0.encoder_pos);
+    Serial.print("  Pendulum 1: ");
+    Serial.print(pendulumData_1.encoder_pos);
+
+    Serial.print("  Cart: ");
+    Serial.print(cartData.encoder_pos);
+
+    Serial.println();
   }
+
 }
