@@ -143,9 +143,9 @@ void loop() {
     Serial.write('s');
     Serial.write('t');
 
-    auto pendulum_0_pos = -pendulum_0.getPos();
+    auto pendulum_0_pos = pendulum_0.getPos();
     auto pendulum_1_pos = pendulum_1.getPos();
-    auto pendulum_0_vel = pendulum_0.getVel();
+    auto pendulum_0_vel = -pendulum_0.getVel();
     auto pendulum_1_vel = -pendulum_1.getVel();
 
     state[0] = stepper.currentPosition() * length_per_step;

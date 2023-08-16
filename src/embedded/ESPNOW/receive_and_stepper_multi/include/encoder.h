@@ -59,7 +59,7 @@ class RotaryEncoder
         };
 
         // Get value from circular buffer, index 0 is the most recent value, -1 is the second most recent, etc.
-        float getPos(int index = 0)
+        double getPos(int index = 0)
         {
             // Check if index is out of bounds
             if (index >= bufferSize)
@@ -74,13 +74,13 @@ class RotaryEncoder
 
         // Get velocity, calculate from 2 step method, returns radians per second
         // Use velocityTimer to calculate velocity, Use micros() to get current time
-        float getVel()
+        double getVel()
         {
             // Calculate time difference
-            float timeDifference = velocityTimer / 1000000.0;
+            double timeDifference = velocityTimer / 1000000.0;
 
             // Calculate velocity
-            float velocity = atan2(sin(getPos(0) - getPos(-1)), cos(getPos(0) - getPos(-1))) / timeDifference;
+            double velocity = atan2(sin(getPos(0) - getPos(-1)), cos(getPos(0) - getPos(-1))) / timeDifference;
 
             // Print last 2 values
             // Serial.print("new: ");

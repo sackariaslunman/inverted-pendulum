@@ -67,7 +67,7 @@ uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x38, 0x02, 0xFC};
 
 
 byte sender_ID = 0;
-#define REVERSE_ENCODER 0
+// #define REVERSE_ENCODER
 
 
 typedef struct struct_message {
