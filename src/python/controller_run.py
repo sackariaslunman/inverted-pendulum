@@ -4,7 +4,7 @@ from lib.cartpolesimulator import CartPoleEnvSimulator, CartPoleSerialSimulator
 from lib.cartpolesystem import CartPoleSystem, Pole, Cart, StepperMotor
 
 def main():
-    dt = 0.01
+    dt = 0.005
     g = 9.81
     r = 0.04456
     m = 0.2167
