@@ -4,7 +4,10 @@
 			"path": "."
 		},
 		{
-			"path": "src/embedded/ESPNOW/receive_and_stepper"
+			"path": "src/embedded/ESPNOW/encoder_pendel"
+		},
+		{
+			"path": "src/embedded/ESPNOW/receive_and_stepper_multi"
 		}
 	],
 	"settings": {}

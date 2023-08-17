@@ -4,20 +4,28 @@ from lib.cartpolesimulator import CartPoleEnvSimulator, CartPoleSerialSimulator
 from lib.cartpolesystem import CartPoleSystem, Pole, Cart, StepperMotor
 
 def main():
-    dt = 0.005
+    dt = 0.01
     g = 9.81
     r = 0.04456
-    x_max = 1.15/2
-    l1 = 0.225
-    m1 = 0.0445
     m = 0.2167
+    x_max = 1.15/2
+
+    l1 = 0.225
+    a1 = l1/2
+    m1 = 0.0445 #+0.069*2+0.040
     d1 = 0.0003
-    J = 2.23e-4
+    J1 = 2.23e-4#*(m1/0.0445)
+
+    # m2 = 0.062
+    # l2 = 0.115
+    # a2 = 0.046
+    # d2 = 0.00001
+    # J2 = 1.694e-4
 
     print("Calculating equations (1-5 min)...")
     cart = Cart(m, 0.01, (-x_max, x_max), 0.1)
     motor = StepperMotor(r, (-2.7, 2.7), 0.1, (-2, 2), 0.1)
-    poles = [Pole(m1, l1, l1/2, d1, J)]
+    poles = [Pole(m1, l1, a1, d1, J1)]
     path = "./cartpolesystems"
     
     system = CartPoleSystem(cart, motor, poles, g, False)

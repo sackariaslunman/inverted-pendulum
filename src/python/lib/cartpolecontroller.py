@@ -306,6 +306,15 @@ class CartPoleController:
                     self._adjust_gains()
                 except ValueError:
                     print('Value error: Failed to parse value to number')
+            
+            elif command in ["h", "help"]:
+                print("Commands:")
+                print("  c: Disable control")
+                print("  r: Set position")
+                print("  t: Set trajectory")
+                print("  f: Set function (cos)")
+                print("  j: Adjust LQR gains")
+                print("  q: Quit")
 
             if not self._simulator.running:
                 self.stop()
