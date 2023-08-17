@@ -113,6 +113,7 @@ class CartPoleSerialSimulator(CartPoleSimulator):
                 state = np.frombuffer(state_bytes, dtype=self._state.dtype)
 
                 self._state = np.array(state, dtype=self._state.dtype)
+                print(self._state)
 
                 self._control = self.get_control(self._state)
 

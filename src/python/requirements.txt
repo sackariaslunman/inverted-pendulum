@@ -4,7 +4,7 @@ scikit-learn
 matplotlib
 numpy
 gym
-pygame
+pygame==2.4.0
 casadi
 pyserial
 pandas
