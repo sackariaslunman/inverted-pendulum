@@ -111,9 +111,12 @@ class CartPoleSerialSimulator(CartPoleSimulator):
                 ser.read_until(b"xst")
                 state_bytes = ser.read(self._state.nbytes)
                 state = np.frombuffer(state_bytes, dtype=self._state.dtype)
-
                 self._state = np.array(state, dtype=self._state.dtype)
-                print(self._state)
+
+                # print("State bytes:", state_bytes)
+                # print("Num of bytes:", len(state_bytes))
+                # print("State:", state)
+                # print("_State:", self._state)
 
                 self._control = self.get_control(self._state)
 

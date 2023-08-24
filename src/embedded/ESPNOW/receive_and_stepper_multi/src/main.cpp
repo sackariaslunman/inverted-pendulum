@@ -94,7 +94,8 @@ AccelStepper stepper(1, stepPin, dirPin);
 
 long last_update = 0;
 long last_loop = 0;
-int dt = 10000;
+// int dt = 10000;
+int dt = 5000;
 
 // State  = pos (m), vel (m/s), angle (rad), angle_vel (rad/sec)
 #ifdef ONE_PENDULUM
@@ -143,16 +144,20 @@ void loop() {
     Serial.write('s');
     Serial.write('t');
 
-    auto pendulum_0_pos = -pendulum_0.getPos();
-    auto pendulum_1_pos = pendulum_1.getPos();
-    auto pendulum_0_vel = pendulum_0.getVel();
-    auto pendulum_1_vel = -pendulum_1.getVel();
-
+    auto last_pos_0 = state[2];
+    auto pendulum_0_pos = pendulum_0.getPos();
+    // auto pendulum_0_vel = pendulum_0.getVel();
+    auto pendulum_0_vel = atan2(sin(pendulum_0_pos - last_pos_0), cos(pendulum_0_pos - last_pos_0)) / dt * 1000000;
+    
     state[0] = stepper.currentPosition() * length_per_step;
     state[1] = stepper.speed() * length_per_step;
     state[2] = pendulum_0_pos;
     state[3] = pendulum_0_vel;
     #ifdef TWO_PENDULUMS
+    auto last_pos_1 = state[4];
+    auto pendulum_1_pos = pendulum_1.getPos();
+    // auto pendulum_1_vel = pendulum_1.getVel();
+    auto pendulum_1_vel = atan2(sin(pendulum_1_pos - last_pos_1), cos(pendulum_1_pos - last_pos_1)) / dt * 1000000;
     state[4] = pendulum_1_pos + pendulum_0_pos + PI; 
     state[5] = pendulum_1_vel + pendulum_0_vel;
     #endif

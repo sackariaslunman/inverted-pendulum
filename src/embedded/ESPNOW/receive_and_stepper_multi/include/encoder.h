@@ -11,7 +11,7 @@ class RotaryEncoder
     private:
         // Circular buffer
         // const int bufferSize = 10;
-        #define bufferSize 3
+        #define bufferSize 10
         double buffer[bufferSize];
         int bufferIndex = 0;
 
@@ -53,34 +53,35 @@ class RotaryEncoder
             }
 
             // Update velocity timer
+            oldTime = newTime;
             newTime = micros();
             velocityTimer = newTime - oldTime;
-            oldTime = newTime;
         };
 
         // Get value from circular buffer, index 0 is the most recent value, -1 is the second most recent, etc.
-        float getPos(int index = 0)
+        // Added -1 to get most recent value, since bufferIndex points to the next index to be written
+        double getPos(int index = 0)
         {
-            // Check if index is out of bounds
-            if (index >= bufferSize)
-            {
-                // Return error
-                return 1337;
-            } 
-
-            int buffer_index_temp = (bufferSize + bufferIndex + index) % bufferSize;
+            int buffer_index_temp = (bufferSize + bufferIndex -1 + index) % bufferSize;
             return buffer[buffer_index_temp];
         };
 
         // Get velocity, calculate from 2 step method, returns radians per second
         // Use velocityTimer to calculate velocity, Use micros() to get current time
-        float getVel()
+        double getVel()
         {
             // Calculate time difference
-            float timeDifference = velocityTimer / 1000000.0;
+            double timeDifference = velocityTimer / 1000000.0;
 
             // Calculate velocity
-            float velocity = atan2(sin(getPos(0) - getPos(-1)), cos(getPos(0) - getPos(-1))) / timeDifference;
+            double average_velocity_n = 0;
+            int n = 1; // moving average of n values
+            for (auto i = 0; i < n; i++) {
+                // Current pos minus previous pos
+                auto delta_pos = getPos(-i)-getPos(-i-1);
+                average_velocity_n += atan2(sin(delta_pos), cos(delta_pos)) / timeDifference;
+            }
+            double velocity = average_velocity_n / n;
 
             // Print last 2 values
             // Serial.print("new: ");

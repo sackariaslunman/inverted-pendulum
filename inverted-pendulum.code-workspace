@@ -10,5 +10,9 @@
 			"path": "src/embedded/ESPNOW/receive_and_stepper_multi"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"ios": "cpp"
+		}
+	}
 }

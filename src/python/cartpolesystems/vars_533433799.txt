@@ -1,0 +1,6 @@
+s
+d_s
+theta1
+d_theta1
+dd_s
+dd_theta1

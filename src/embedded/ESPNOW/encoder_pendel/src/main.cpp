@@ -18,13 +18,13 @@ bool ledState = 0;
 #define POS_ENDSTOP_PIN 32
 
 // Global variables
-volatile byte encoderAState = 0;
-volatile byte encoderBState = 0;
-volatile byte encoderXState = 0;
+volatile bool encoderAState = 0;
+volatile bool encoderBState = 0;
+volatile bool encoderXState = 0;
 
-volatile byte encoderAStateOld = 0;
-volatile byte encoderBStateOld = 0;
-volatile byte encoderXStateOld = 0;
+volatile bool encoderAStateOld = 0;
+volatile bool encoderBStateOld = 0;
+volatile bool encoderXStateOld = 0;
 
 volatile int encoderPosition = 0;
 
@@ -42,14 +42,13 @@ void encoderACall();
 void encoderBCall();
 void encoderXCall();
 
+void encoderUpdate();
 void encoderAUpdate();
 void encoderBUpdate();
 
 void writePosBuffer(int pos);
 int readPosBuffer(int index);
 void updateBuffer();
-
-float calculateSpeed();
 
 void endstopNegCall();
 void endstopPosCall();
@@ -67,7 +66,7 @@ uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x38, 0x02, 0xFC};
 
 
 byte sender_ID = 0;
-#define REVERSE_ENCODER 0
+const bool REVERSE_ENCODER = false;
 
 
 typedef struct struct_message {
@@ -154,8 +153,7 @@ void loop() {
       }
     }
   }
-  
-  myData.encoder_pos = encoderPosition % 4096;
+  myData.encoder_pos = encoderPosition;
   if (enableEspNow) {
     result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
   }
@@ -164,8 +162,9 @@ void loop() {
     result = 0;
   }
   
+  Serial.print("Pos: ");
   Serial.print(encoderPosition);
-  Serial.print("\t");
+  Serial.print("\tTime: ");
   Serial.print(millis() - startMillis);  
   Serial.print("\t");
 
@@ -180,9 +179,9 @@ void loop() {
 
   Serial.println();
 
-  delay(5);
+  delay(2);
 
-  // Blink led if millis modelu 1000 is less than 500
+  // Blink led if millis modulo 1000 is less than 500
   if ((millis() % 1000) < 500)
   {
     digitalWrite(LED_PIN, HIGH);
@@ -195,8 +194,6 @@ void loop() {
 }
 
 
-
-
 // put function definitions here:
 // Ring buffer functions
 void writePosBuffer(int value){
@@ -207,7 +204,7 @@ void writePosBuffer(int value){
   }
 }
 
-// Denna funkar nog inte helt korrekt? Behöver lägga till något med nuvarnade posBufferIndex??
+// Denna funkar nog inte helt korrekt? Behöver lägga till något med nuvarande posBufferIndex??
 int readPosBuffer(int index){
   index = (ENCODER_BUFFER_SIZE + index + posBufferIndex) % ENCODER_BUFFER_SIZE;
   int value = posBuffer[index];
@@ -219,7 +216,7 @@ void updateBuffer(){
     encoderPosition = encoderPosition + 4096;
   }
   encoderPosition = encoderPosition % 4096;
-  writePosBuffer(encoderPosition);
+  // writePosBuffer(encoderPosition);
 }
 
 
@@ -233,7 +230,6 @@ void encoderACall(){
 void encoderBCall(){
   encoderBStateOld = encoderBState;
   encoderBState = digitalRead(ENCODER_PIN_B);
-  // encoderUpdate();
   // encoderBUpdate();
 }
 
@@ -248,40 +244,42 @@ void encoderXCall(){
 }
 
 void encoderAUpdate(){
-  #ifndef REVERSE_ENCODER
+  if (REVERSE_ENCODER) {
     if (encoderAState == encoderBState){
       encoderPosition++; // CW
     } 
     else{
       encoderPosition--; // CCW
     }
-  #else
+  }
+  else {
     if (encoderAState == encoderBState){
       encoderPosition--; // CW
     } 
     else{
       encoderPosition++; // CCW
     }
-  #endif
+  }
   updateBuffer();
 }
 
 void encoderBUpdate(){
-  #ifndef REVERSE_ENCODER
+  if (REVERSE_ENCODER) {
     if (encoderBState == encoderAState){
       encoderPosition--; // CW
     } 
     else{
       encoderPosition++; // CCW
     }
-  #else
+  }
+  else {
     if (encoderBState == encoderAState){
       encoderPosition++; // CW
     } 
     else{
       encoderPosition--; // CCW
     }
-  #endif
+  }
   updateBuffer();
 }
 

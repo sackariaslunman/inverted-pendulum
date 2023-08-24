@@ -10,22 +10,29 @@ def main():
     m = 0.2167
     x_max = 1.15/2
 
-    l1 = 0.225
-    a1 = l1/2
-    m1 = 0.0445 #+0.069*2+0.040
-    d1 = 0.0003
-    J1 = 2.23e-4#*(m1/0.0445)
+    d = 0.000004
 
-    # m2 = 0.062
-    # l2 = 0.115
-    # a2 = 0.046
-    # d2 = 0.00001
-    # J2 = 1.694e-4
+    l1 = 0.115
+    a1 = 0.0540036985
+    m1 = 0.098519
+    d1 = d
+    J1 = 0.0002134646
+    pole1 = Pole(m1, l1, a1, d1, J1)
+
+    l2 = 0.200
+    a2 = 0.067341
+    m2 = 0.09445
+    d2 = d
+    J2 = 0.000403
+    pole2 = Pole(m2, l2, a2, d2, J2)
 
     print("Calculating equations (1-5 min)...")
     cart = Cart(m, 0.01, (-x_max, x_max), 0.1)
     motor = StepperMotor(r, (-2.7, 2.7), 0.1, (-2, 2), 0.1)
-    poles = [Pole(m1, l1, a1, d1, J1)]
+    poles = [
+        # pole1, 
+        pole2,
+    ]
     path = "./cartpolesystems"
     
     system = CartPoleSystem(cart, motor, poles, g, False)
