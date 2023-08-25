@@ -27,6 +27,13 @@ volatile bool encoderBStateOld = 0;
 volatile bool encoderXStateOld = 0;
 
 volatile int encoderPosition = 0;
+// int encoderPositionOld = 0;
+
+double encoderRad = 0;
+double encoderRadOld = 0;
+double encoderVel = 0;
+
+unsigned long lastLoopTime = 0;
 
 volatile bool endstopNegState = 0;
 volatile bool endstopPosState = 0;
@@ -65,12 +72,13 @@ uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x38, 0x02, 0xFC};
 // uint8_t broadcastAddress[] = {0xC0, 0x49, 0xEF, 0xF0, 0x93, 0x34};
 
 
-byte sender_ID = 1;
+byte sender_ID = 0;
 const bool REVERSE_ENCODER = false;
 
 
 typedef struct struct_message {
-  int16_t encoder_pos;
+  double encoder_pos;
+  double encoder_velocity;
   byte id;
 } struct_message;
 
@@ -157,7 +165,18 @@ void loop() {
       }
     }
   }
-  myData.encoder_pos = encoderPosition;
+  
+  int dt = micros() - lastLoopTime;
+
+  encoderRad = ((double)encoderPosition) * 2 * PI / 4096.0 - PI;
+
+  double encoderVel = atan2(sin(encoderRad - encoderRadOld), cos(encoderRad - encoderRadOld)) / dt * 1000000;
+
+  lastLoopTime = micros();
+  
+  
+  myData.encoder_pos = encoderRad;
+  myData.encoder_velocity = encoderVel;
   if (enableEspNow) {
     result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
   }
@@ -167,10 +186,21 @@ void loop() {
   }
   
   Serial.print("Pos: ");
-  Serial.print(encoderPosition);
+  // Serial.print(encoderPosition);
+  Serial.print(encoderRad, 5);
+  Serial.print("\tOld: ");
+  Serial.print(encoderRadOld, 5);
+  Serial.print("\tVel: ");
+  Serial.print(encoderVel, 5);
   Serial.print("\tTime: ");
-  Serial.print(millis() - startMillis);  
+  Serial.print(millis() - startMillis); 
+  Serial.print("\t dt: ");
+  Serial.print(dt);
+
   Serial.print("\t");
+
+  encoderRadOld = encoderRad;
+
 
   // Send message via ESP-NOW
   if (result == ESP_OK) {
