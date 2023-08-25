@@ -23,7 +23,7 @@ class RotaryEncoder
         double stepToRad(int step)
         {
             // Convert step to radians
-            double rad = double(step) * 2 * PI / 4096 - PI;
+            double rad = ((double)step) * 2 * PI / 4096 - PI;
 
             // Return radians
             return rad;
@@ -31,6 +31,8 @@ class RotaryEncoder
 
     public:
         double pos = 0;
+        double vel = 0;
+
 
         // Constructor
         RotaryEncoder()
@@ -39,10 +41,12 @@ class RotaryEncoder
         };
 
         // Update
-        void update(int step)
+        void update(double angle, double angular_velocity)
         {
             // Add value to buffer
-            pos = stepToRad(step);
+            pos = angle;
+            vel = angular_velocity;
+            
             buffer[bufferIndex] = pos;
 
             // Increment buffer index

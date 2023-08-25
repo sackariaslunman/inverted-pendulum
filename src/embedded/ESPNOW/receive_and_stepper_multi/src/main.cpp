@@ -27,7 +27,8 @@ unsigned long startMillis = 0;
 // Structure example to receive data
 // Must match the sender structure
 typedef struct struct_message {
-    int16_t encoder_pos;
+    double encoder_pos;
+    double encoder_vel;
     byte sender_id;
 } struct_message;
 
@@ -49,15 +50,15 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   // Update struct with corresponding id
   if (recivedData.sender_id == 0){
     // pendulumData_0 = recivedData;
-    pendulum_0.update(recivedData.encoder_pos);
+    pendulum_0.update(recivedData.encoder_pos, recivedData.encoder_vel);
   }
   else if (recivedData.sender_id == 1){
     // pendulumData_1 = recivedData;
-    pendulum_1.update(recivedData.encoder_pos);
+    pendulum_1.update(recivedData.encoder_pos, recivedData.encoder_vel);
   }
   else if (recivedData.sender_id == 4){
     // cartData = recivedData;
-    cart.update(recivedData.encoder_pos);
+    cart.update(recivedData.encoder_pos, recivedData.encoder_vel);
   }
   else{
     // Serial.println("Error: Invalid sender ID");
@@ -147,8 +148,9 @@ void loop() {
     Serial.write('t');
 
     auto pendulum_0_pos = pendulum_0.pos;
+    auto pendulum_0_vel = pendulum_0.vel;
     // auto pendulum_0_vel = pendulum_0.getVel();
-    auto pendulum_0_vel = atan2(sin(pendulum_0_pos - prev_pos_0), cos(pendulum_0_pos - prev_pos_0)) / dt * 1000000;
+    // auto pendulum_0_vel = atan2(sin(pendulum_0_pos - prev_pos_0), cos(pendulum_0_pos - prev_pos_0)) / dt * 1000000;
     
     state[0] = stepper.currentPosition() * length_per_step;
     state[1] = stepper.speed() * length_per_step;
@@ -158,8 +160,9 @@ void loop() {
 
     #ifdef TWO_PENDULUMS
     auto pendulum_1_pos = pendulum_1.pos;
+    auto pendulum_1_vel = pendulum_1.vel;
     // auto pendulum_1_vel = pendulum_1.getVel();
-    auto pendulum_1_vel = atan2(sin(pendulum_1_pos - prev_pos_1), cos(pendulum_1_pos - prev_pos_1)) / dt * 1000000;
+    // auto pendulum_1_vel = atan2(sin(pendulum_1_pos - prev_pos_1), cos(pendulum_1_pos - prev_pos_1)) / dt * 1000000;
     state[4] = pendulum_1_pos + pendulum_0_pos + PI; 
     state[5] = pendulum_1_vel + pendulum_0_vel;
     prev_pos_1 = pendulum_1_pos;
