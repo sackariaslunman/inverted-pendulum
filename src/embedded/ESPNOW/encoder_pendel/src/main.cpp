@@ -65,7 +65,7 @@ uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x38, 0x02, 0xFC};
 // uint8_t broadcastAddress[] = {0xC0, 0x49, 0xEF, 0xF0, 0x93, 0x34};
 
 
-byte sender_ID = 0;
+byte sender_ID = 1;
 const bool REVERSE_ENCODER = false;
 
 
@@ -89,6 +89,8 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 unsigned long startMillis = 0;
 
 bool enableEspNow = true;
+
+unsigned long last_changed_time = 0;
 
 
 void setup() {
@@ -138,8 +140,10 @@ void setup() {
 
   // Set id
   myData.id = sender_ID;
-
+  delay(5000);
 }
+
+int loop_encoder_position = 0;
 
 void loop() {
   // put your main code here, to run repeatedly:
@@ -179,7 +183,7 @@ void loop() {
 
   Serial.println();
 
-  delay(2);
+  delay(5);
 
   // Blink led if millis modulo 1000 is less than 500
   if ((millis() % 1000) < 500)
@@ -191,6 +195,17 @@ void loop() {
     digitalWrite(LED_PIN, LOW);
   }
 
+  // if (((loop_encoder_position-encoderPosition)+4096)%4096 > 2 || ((encoderPosition-loop_encoder_position)+4096)%4096 > 2) {
+  //   last_changed_time = micros();
+  // }
+
+  // // If pos hasn't changed for 5 seconds
+  // if (micros() > last_changed_time + 5*1000*1000) {
+  //   if (encoderPosition < 10 || encoderPosition > 4096-10) {
+  //     encoderPosition = 0;
+  //   }
+  // }
+  // loop_encoder_position = encoderPosition;
 }
 
 
@@ -216,6 +231,7 @@ void updateBuffer(){
     encoderPosition = encoderPosition + 4096;
   }
   encoderPosition = encoderPosition % 4096;
+  last_changed_time = micros();
   // writePosBuffer(encoderPosition);
 }
 

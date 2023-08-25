@@ -17,8 +17,8 @@
 #include "encoder.h"
 
 // Define number of pendulums
-#define ONE_PENDULUM
-// #define TWO_PENDULUMS
+// #define ONE_PENDULUM
+#define TWO_PENDULUMS
 
 
 // Time
@@ -90,6 +90,8 @@ const double angle_per_step = 2*PI / encoded_steps_per_revolution; // rad
 
 AccelStepper stepper(1, stepPin, dirPin); 
 
+double prev_pos_0 = 0;
+double prev_pos_1 = 0;
 
 
 long last_update = 0;
@@ -144,22 +146,23 @@ void loop() {
     Serial.write('s');
     Serial.write('t');
 
-    auto last_pos_0 = state[2];
-    auto pendulum_0_pos = pendulum_0.getPos();
+    auto pendulum_0_pos = pendulum_0.pos;
     // auto pendulum_0_vel = pendulum_0.getVel();
-    auto pendulum_0_vel = atan2(sin(pendulum_0_pos - last_pos_0), cos(pendulum_0_pos - last_pos_0)) / dt * 1000000;
+    auto pendulum_0_vel = atan2(sin(pendulum_0_pos - prev_pos_0), cos(pendulum_0_pos - prev_pos_0)) / dt * 1000000;
     
     state[0] = stepper.currentPosition() * length_per_step;
     state[1] = stepper.speed() * length_per_step;
     state[2] = pendulum_0_pos;
     state[3] = pendulum_0_vel;
+    prev_pos_0 = pendulum_0_pos;
+
     #ifdef TWO_PENDULUMS
-    auto last_pos_1 = state[4];
-    auto pendulum_1_pos = pendulum_1.getPos();
+    auto pendulum_1_pos = pendulum_1.pos;
     // auto pendulum_1_vel = pendulum_1.getVel();
-    auto pendulum_1_vel = atan2(sin(pendulum_1_pos - last_pos_1), cos(pendulum_1_pos - last_pos_1)) / dt * 1000000;
+    auto pendulum_1_vel = atan2(sin(pendulum_1_pos - prev_pos_1), cos(pendulum_1_pos - prev_pos_1)) / dt * 1000000;
     state[4] = pendulum_1_pos + pendulum_0_pos + PI; 
     state[5] = pendulum_1_vel + pendulum_0_vel;
+    prev_pos_1 = pendulum_1_pos;
     #endif
 
     Serial.write((uint8_t*)state, sizeof(state));

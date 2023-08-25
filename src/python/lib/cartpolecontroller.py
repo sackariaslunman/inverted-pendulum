@@ -76,8 +76,8 @@ class CartPoleController:
 
         self.C = np.diag([1, 1]+[1, 1]*self._system.num_poles)
         self.D = np.zeros([1, 1])
-        self.Q = np.diag([10, 2]+[10, 2]*self._system.num_poles)
-        self.R = np.diag([1])
+        self.Q = np.diag([500, 20]+[900, 100]*self._system.num_poles)
+        self.R = np.diag([1000])
 
         self._desired_controls = []
         self._desired_states = []
@@ -274,12 +274,15 @@ class CartPoleController:
                     elif pos < min_pos:
                         pos = min_pos
 
+                    max_time = 7
+                    min_time = 1
+
                     pole_pos = [bool(int(input(f"Enter pole {i} position ('0' for down or '1' for up): "))) for i in range(self._system.num_poles)]
-                    end_time = float(input('Enter end time (between 1 and 10 seconds): '))
-                    if end_time > 10:
-                        end_time = 10
-                    elif end_time < 1:
-                        end_time = 1
+                    end_time = float(input(f'Enter end time (between {min_time} and {max_time} seconds): '))
+                    if end_time > max_time:
+                        end_time = max_time
+                    elif end_time < min_time:
+                        end_time = min_time
                     trajectory_process = Thread(target=self.create_trajectory, args=(pos, pole_pos, end_time))
                     trajectory_process.start()
                 except ValueError:

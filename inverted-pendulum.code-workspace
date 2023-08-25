@@ -12,7 +12,9 @@
 	],
 	"settings": {
 		"files.associations": {
-			"ios": "cpp"
+			"ios": "cpp",
+			"cmath": "cpp",
+			"valarray": "cpp"
 		}
 	}
 }

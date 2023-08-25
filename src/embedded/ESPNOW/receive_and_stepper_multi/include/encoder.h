@@ -11,7 +11,7 @@ class RotaryEncoder
     private:
         // Circular buffer
         // const int bufferSize = 10;
-        #define bufferSize 10
+        #define bufferSize 1
         double buffer[bufferSize];
         int bufferIndex = 0;
 
@@ -30,6 +30,8 @@ class RotaryEncoder
         };
 
     public:
+        double pos = 0;
+
         // Constructor
         RotaryEncoder()
         {
@@ -40,7 +42,8 @@ class RotaryEncoder
         void update(int step)
         {
             // Add value to buffer
-            buffer[bufferIndex] = stepToRad(step);
+            pos = stepToRad(step);
+            buffer[bufferIndex] = pos;
 
             // Increment buffer index
             bufferIndex++;

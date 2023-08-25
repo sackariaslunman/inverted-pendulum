@@ -191,6 +191,10 @@ class CartPoleSystem:
     def calculate_error(self, state: np.ndarray, reference: np.ndarray) -> np.ndarray:
         error = reference-state
         error[2::2] = np.arctan2(np.sin(error[2::2]), np.cos(error[2::2]))
+        # for i, e in enumerate(error):
+        #     if abs(e) < 0.01:
+        #         error[i] = 0
+
         return error
 
     def set_sp_equations(self):
