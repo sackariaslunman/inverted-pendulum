@@ -72,7 +72,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 #define dirPin 22
 #define stepPin 21
  
-int maxSpeed = 9000;
+int maxSpeed = 11000;
 int accel = 50000;
 
 int targetPos = 0;

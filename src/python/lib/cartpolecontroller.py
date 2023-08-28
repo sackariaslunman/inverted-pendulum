@@ -274,7 +274,7 @@ class CartPoleController:
                     elif pos < min_pos:
                         pos = min_pos
 
-                    max_time = 7
+                    max_time = 10
                     min_time = 1
 
                     pole_pos = [bool(int(input(f"Enter pole {i} position ('0' for down or '1' for up): "))) for i in range(self._system.num_poles)]
