@@ -40,15 +40,15 @@ d_pole_pc1s = diff(pole_pc1s,t);
 d_pole_pc2s = diff(pole_pc2s,t);
 
 % create kinetic energies
-T = 1/2*m_c*diff(s,t)^2;
-T = T + sum(1/2*pole_ms.*(d_pole_pc1s.^2+d_pole_pc2s.^2)+1/2*pole_Js.*diff(thetas,t).^2);
+T = 0.5*m_c*diff(s,t)^2;
+T = T + sum(0.5*pole_ms.*(d_pole_pc1s.^2+d_pole_pc2s.^2)+0.5*pole_Js.*diff(thetas,t).^2);
 
 % create potential energy
 V = sum(g*pole_ms.*pole_pc2s);
 
 % create dissipation function
 d_thetas_extended = [0,diff(thetas,t)];
-R = (1/2*pole_ds.*(d_thetas_extended(2:end)-d_thetas_extended(1:end-1)).^2);
+R = (0.5*pole_ds.*(d_thetas_extended(2:end)-d_thetas_extended(1:end-1)).^2);
 
 % Add equation for tau
 L = T-V;
@@ -87,37 +87,7 @@ end
 
 % Solve for dd_theta and stuff
 sol_vars = cat(num_poles, tau, dd_theta);
-sols = solve(eqs, sol_vars);
+sols = solve(eqs, sol_vars,"IgnoreAnalyticConstraints",true);
 
+disp("sols:")
 disp(sols)
-
-% Create a vector of all variables
-vars = cat(2, new_vars, [g m_c], pole_ms, pole_ls, pole_as, pole_ds, pole_Js);
-
-% convert sols to strings
-sols_str = strings(size(sols));
-sols_str(1) = string(sols.tau);
-for i = 1:length(sols)
-    var = "dd_theta" + i;
-    sols_str(i+1) = string(sols.(var));
-end
-
-% save sols to file as sols_{num_poles}.txt
-fileID = fopen("sols_" + num_poles + ".txt",'w');
-for i = 1:length(sols_str)
-    if i ~= 1
-        fprintf(fileID, "\n");
-    end
-    fprintf(fileID, sols_str(i));
-end
-fclose(fileID);
-
-% save vars to file as vars_{num_poles}.txt
-fileID = fopen("vars_" + num_poles + ".txt",'w');
-for i = 1:length(vars)
-    if i ~= 1
-        fprintf(fileID, "\n");
-    end
-    fprintf(fileID, string(vars(i)));
-end
-fclose(fileID);

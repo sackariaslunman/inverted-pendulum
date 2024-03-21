@@ -1,0 +1,1 @@
+(-J1*a1*dtheta1**2*m1*sin(theta1) + J1*dds*m1 + J1*dds*mc - a1**3*dtheta1**2*m1**2*sin(theta1) - a1**2*dds*m1**2*cos(theta1)**2 + a1**2*dds*m1**2 + a1**2*dds*m1*mc + a1**2*g*m1**2*sin(2*theta1)/2 - a1*d1*dtheta1*m1*cos(theta1))/(J1 + a1**2*m1)

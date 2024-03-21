@@ -1,0 +1,2 @@
+-1.5*dd_s*cos(theta1) + 14.715*sin(theta1)
+-0.5*d_theta1**2*sin(theta1) - 0.375*dd_s*cos(2*theta1) + 1.625*dd_s + 3.67875*sin(2*theta1)
