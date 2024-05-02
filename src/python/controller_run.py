@@ -11,12 +11,12 @@ def main():
     x_max = 1.15/2
 
     # 115 mm, 45.4 g outer
-    l1 = 0.115
-    a1 = 0.066506
-    m1 = 0.123919
-    d1 = 0.006
-    J1 = 0.0002898662297
-    pole1 = Pole(m1, l1, a1, d1, J1)
+    # l1 = 0.115
+    # a1 = 0.066506
+    # m1 = 0.123919
+    # d1 = 0.006
+    # J1 = 0.0002898662297
+    # pole1 = Pole(m1, l1, a1, d1, J1)
 
     # # 200 mm, 45.4 g outer
     # l1 = 0.200
@@ -40,7 +40,7 @@ def main():
     m2 = 0.09445
     d2 = 0.0001
     J2 = 0.00040300
-    pole2 = Pole(m2, l2, a2, d2, J2)
+    pole1 = Pole(m2, l2, a2, d2, J2)
 
     # # 200 mm, 55 g outer + 72.5 g middle
     # l2 = 0.200
@@ -55,7 +55,6 @@ def main():
     motor = StepperMotor(r, (-2.7, 2.7), 0.2, (-2, 2), 0.2)
     poles = [
         pole1,
-        pole2,
     ]
     path = "./cartpolesystems"
     

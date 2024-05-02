@@ -76,8 +76,9 @@ class CartPoleController:
 
         self.C = np.diag([1, 1]+[1, 1]*self._system.num_poles)
         self.D = np.zeros([1, 1])
+        # position, velocity, angle1, angular velocity 1, ...
         self.Q = np.diag([500, 20]+[900, 100]*self._system.num_poles)
-        self.R = np.diag([1000])
+        self.R = np.diag([2])
 
         self._desired_controls = []
         self._desired_states = []
@@ -237,6 +238,12 @@ class CartPoleController:
                 d_theta_gain = float(d_theta_gain)
             self.Q[2*i+2, 2*i+2] = theta_gain
             self.Q[2*i+3, 2*i+3] = d_theta_gain
+        acc_gain = input(f'Enter acceleration gain (enter to keep {self.R[0,0]}): ')
+        if acc_gain == '':
+            acc_gain = self.R[0,0]
+        else:
+            acc_gain = float(acc_gain)
+        self.R[0, 0] = acc_gain
     
     def run(self):
         if self._is_running:

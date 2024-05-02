@@ -1,15 +1,17 @@
 import sympy as sp 
 from sympy.core import Symbol, Expr
 import os
+from typing import Sequence
 
-def generate_param_vars(n_poles: int) -> tuple[list[Symbol], list[Symbol], list[Symbol], list[Symbol], list[Symbol], Symbol, Symbol]:
+def generate_param_vars(n_poles: int) -> tuple[Sequence[Symbol], Sequence[Symbol], Sequence[Symbol], Sequence[Symbol], Sequence[Symbol], Symbol, Symbol, Symbol]:
     pole_ms = [sp.symbols(f"m{i+1}") for i in range(n_poles)]
     pole_ls = [sp.symbols(f"l{i+1}") for i in range(n_poles)]
     pole_as = [sp.symbols(f"a{i+1}") for i in range(n_poles)]
     pole_ds = [sp.symbols(f"d{i+1}") for i in range(n_poles)]
     pole_Js = [sp.symbols(f"J{i+1}") for i in range(n_poles)]
-    mc, g = sp.symbols("mc g")
-    return pole_ms, pole_ls, pole_as, pole_ds, pole_Js, mc, g
+    # Phi is the angle of gravity
+    mc, g, phi = sp.symbols("mc g phi")
+    return pole_ms, pole_ls, pole_as, pole_ds, pole_Js, mc, g, phi
 
 def generate_dynamic_vars(n_poles: int) -> list[Symbol]:
     pure_s, pure_d_s, pure_dd_s = sp.symbols("s ds dds")
@@ -37,7 +39,7 @@ def calculate_equations_of_motions(n_poles: int, verbose: bool = True):
     tau = sp.symbols("tau")
 
     # Parameter variables
-    pole_ms, pole_ls, pole_as, pole_ds, pole_Js, mc, g = generate_param_vars(n_poles)
+    pole_ms, pole_ls, pole_as, pole_ds, pole_Js, mc, g, phi = generate_param_vars(n_poles)
 
     pole_pc1s = []
     pole_pc2s = []
@@ -62,8 +64,9 @@ def calculate_equations_of_motions(n_poles: int, verbose: bool = True):
 
     # Potential energy
     V = 0   
-    for m, pc2 in zip(pole_ms, pole_pc2s):
-        V += g*m*pc2
+    for m, pc1, pc2 in zip(pole_ms, pole_pc1s, pole_pc2s):
+        # phi == 0 => gravity is pointing downwards
+        V += g*m*(pc2*sp.cos(phi) + pc1*sp.sin(phi))
 
     # Dissipation function
     R = 0
@@ -72,6 +75,7 @@ def calculate_equations_of_motions(n_poles: int, verbose: bool = True):
         R += 0.5*d*(d_theta-prev_w)**2 #type: ignore
         prev_w = d_theta
 
+    # Euler-Lagrange equations
     eqs = []
     L = T-V
     lh = sp.diff(sp.diff(L, d_s),t) - sp.diff(L, s) + sp.diff(R, d_s) #type: ignore
@@ -129,10 +133,10 @@ def load_equations_of_motions(n_poles: int) -> list[Expr]:
             sols.append(expr)
     return sols
 
-def substitute_params(n_poles: int, sols: list, pole_ms: list, pole_ls: list, pole_as: list, pole_ds: list, pole_Js: list, mc: float, g: float) -> list[Expr]:
-    param_values = pole_ms + pole_ls + pole_as + pole_ds + pole_Js + [g, mc]
-    var_ms, var_ls, var_as, var_ds, var_Js, var_mc, var_g = generate_param_vars(n_poles)
-    param_vars = var_ms + var_ls + var_as + var_ds + var_Js + [var_g, var_mc]
+def substitute_params(n_poles: int, sols: Sequence[Expr], pole_ms: Sequence[float], pole_ls: Sequence[float], pole_as: Sequence[float], pole_ds: Sequence[float], pole_Js: Sequence[float], mc: float, g: float, phi: float) -> list[Expr]:
+    param_values = pole_ms + pole_ls + pole_as + pole_ds + pole_Js + [g, mc, phi]
+    var_ms, var_ls, var_as, var_ds, var_Js, var_mc, var_g, var_phi = generate_param_vars(n_poles)
+    param_vars = var_ms + var_ls + var_as + var_ds + var_Js + [var_g, var_mc, var_phi]
     subs_dict = dict(zip(param_vars, param_values))
     sols_with_params = [sol.subs(subs_dict) for sol in sols]
     return sols_with_params

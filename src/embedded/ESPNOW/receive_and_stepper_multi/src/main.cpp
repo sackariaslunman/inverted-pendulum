@@ -17,8 +17,8 @@
 #include "encoder.h"
 
 // Define number of pendulums
-// #define ONE_PENDULUM
-#define TWO_PENDULUMS
+#define ONE_PENDULUM
+// #define TWO_PENDULUMS
 
 
 // Time

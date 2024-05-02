@@ -51,6 +51,7 @@ void encoderXCall();
 
 void encoderUpdate();
 void encoderAUpdate();
+void encoderAUpdateOld();
 void encoderBUpdate();
 
 void writePosBuffer(int pos);
@@ -270,13 +271,12 @@ void updateBuffer(){
 void encoderACall(){
   encoderAStateOld = encoderAState;
   encoderAState = digitalRead(ENCODER_PIN_A);
-  encoderAUpdate();
+  encoderAUpdateOld();
 }
 
 void encoderBCall(){
   encoderBStateOld = encoderBState;
   encoderBState = digitalRead(ENCODER_PIN_B);
-  // encoderBUpdate();
 }
 
 void encoderXCall(){
@@ -290,6 +290,24 @@ void encoderXCall(){
 }
 
 void encoderAUpdate(){
+  int encoderChange = 0;
+
+  if (encoderAState != encoderAStateOld) {
+    if (encoderBState != encoderAState) {
+      encoderChange++;
+    } else {
+      encoderChange--;
+    }
+  }
+  if (REVERSE_ENCODER) {
+    encoderChange = -encoderChange;
+  }
+  encoderPosition += encoderChange;
+  updateBuffer();
+}
+
+// Old code, maybe works?
+void encoderAUpdateOld(){
   if (REVERSE_ENCODER) {
     if (encoderAState == encoderBState){
       encoderPosition++; // CW
@@ -328,9 +346,6 @@ void encoderBUpdate(){
   }
   updateBuffer();
 }
-
-
-
 
 
 // Endstop functions
